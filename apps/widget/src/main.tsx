@@ -16,6 +16,10 @@ function Workbench(){
   const original=draft?JSON.stringify(draft.output,null,2):'';const dirty=editor!==original;
   const reviewable=draft?.status==='pending'||draft?.status==='reserved';
   const permitted=!!ticket && ticket.draftId===draft?.id && ticket.version===draft?.version;
+  useEffect(()=>{
+    // Only UI lifecycle booleans: never send exploration data or capabilities here.
+    if(window.parent!==window)window.parent.postMessage({type:'shadow-walker/ui-state',dirty,busy},'*');
+  },[dirty,busy]);
   function receive(result:CallToolResult){
     if(result.isError)throw new Error(result.content.filter(c=>c.type==='text').map(c=>c.text).join('\n'));
     const data=result.structuredContent as {snapshot?:Snapshot;focusedDraftId?:string}|undefined;
