@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { createServer as createVite } from 'vite';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { createMcpServer } from '../apps/server/src/mcp.ts';
 import { Store } from '../packages/storage/src/index.ts';
 import type { Snapshot, MovePacket } from '../packages/domain/src/index.ts';
@@ -21,9 +22,9 @@ const server=createServer(async(req,res)=>{
     const json=(body:unknown)=>{res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify(body));};
     if(url.pathname==='/widget'){res.writeHead(200,{'content-type':'text/html'});res.end(html);return;}
     if(url.pathname==='/initial'){
-      const c=await client.callTool({name:'create_exploration',arguments:{...seed,requestId:randomUUID()}});
+      const c=CallToolResultSchema.parse(await client.callTool({name:'create_exploration',arguments:{...seed,requestId:randomUUID()}}));
       const snapshot=c.structuredContent!.snapshot as Snapshot;
-      const p=await client.callTool({name:'prepare_move',arguments:{explorationId:snapshot.exploration.id,selectedIds:[snapshot.exploration.rootId],humanDirection:'One fixture step.',requestId:randomUUID()}});
+      const p=CallToolResultSchema.parse(await client.callTool({name:'prepare_move',arguments:{explorationId:snapshot.exploration.id,selectedIds:[snapshot.exploration.rootId],humanDirection:'One fixture step.',requestId:randomUUID()}}));
       const packet=p.structuredContent!.packet as MovePacket;
       const result=await client.callTool({name:'submit_move',arguments:{moveId:packet.moveId,output:proposal(snapshot.exploration.rootId),requestId:randomUUID()}});
       if(url.searchParams.has('noMeta'))delete result._meta;

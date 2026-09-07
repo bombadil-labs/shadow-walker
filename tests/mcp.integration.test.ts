@@ -33,9 +33,11 @@ describe('real SDK client over Streamable HTTP',()=>{
     expect(tools.map(t=>t.name)).toEqual(expect.arrayContaining(['create_exploration','prepare_move','submit_move','review_draft']));
     expect((tools.find(t=>t.name==='review_draft')!._meta?.ui as {visibility:string[]}).visibility).toEqual(['app']);
     const resource=await client.readResource({uri:UI_URI});
-    expect(resource.contents[0]!.mimeType).toContain('text/html');
-    expect(resource.contents[0]!.text).toContain('Shadow Walker');
-    expect(resource.contents[0]!.text).not.toMatch(/<script[^>]+src=/);
+    const content=resource.contents[0];
+    if(!content || !('text' in content))throw new Error('Expected a text UI resource.');
+    expect(content.mimeType).toContain('text/html');
+    expect(content.text).toContain('Shadow Walker');
+    expect(content.text).not.toMatch(/<script[^>]+src=/);
   });
   it('round-trips a reviewed walk and reads the same SQLite graph after server restart',async()=>{
     const dir=mkdtempSync(join(tmpdir(),'shadow-walker-mcp-'));const path=join(dir,'walk.sqlite');
