@@ -18,7 +18,7 @@ function Workbench(){
   const permitted=!!ticket && ticket.draftId===draft?.id && ticket.version===draft?.version;
   useEffect(()=>{
     // Only UI lifecycle booleans: never send exploration data or capabilities here.
-    if(window.parent!==window)window.parent.postMessage({type:'shadow-walker/ui-state',dirty,busy},'*');
+    if(window.parent!==window && window.location.pathname==='/app/widget')window.parent.postMessage({type:'shadow-walker/ui-state',dirty,busy},'*');
   },[dirty,busy]);
   function receive(result:CallToolResult){
     if(result.isError)throw new Error(result.content.filter(c=>c.type==='text').map(c=>c.text).join('\n'));
@@ -28,7 +28,7 @@ function Workbench(){
     const d=data.snapshot.drafts.find(d=>d.id===data.focusedDraftId);
     setEditor(d?JSON.stringify(d.output,null,2):'');
     setTicket(result._meta?.['shadowWalker/review'] as ReviewTicket|undefined);
-    setError('');
+    setError('');setNotice('');
   }
   useEffect(()=>{
     bridge.ontoolresult=result=>{try{receive(result);}catch(e){setError(String(e));}};

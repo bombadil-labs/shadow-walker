@@ -20,6 +20,11 @@ test('standalone page opens saved state, protects edits, revises, lands and surv
   await expect(picker).toBeEnabled();
   await view.getByRole('button',{name:'Land',exact:true}).click();
   await expect(view.getByRole('status')).toContainText('Step landed');
+  await picker.selectOption({label:'An earlier exploration'});
+  await expect(view.getByRole('heading',{name:'An earlier exploration',exact:true})).toBeVisible();
+  await expect(view.getByText('Step landed.',{exact:false})).toHaveCount(0);
+  await picker.selectOption({label:'Dashboard review fixture'});
+  await expect(view.getByRole('heading',{name:'Dashboard review fixture',exact:true})).toBeVisible();
   await page.reload();
   await expect(view.getByText('Standalone review keeps the same durable hypothesis.',{exact:true})).toBeVisible();
   await expect(view.getByText(/excavation · accepted · hypothesis/)).toBeVisible();
