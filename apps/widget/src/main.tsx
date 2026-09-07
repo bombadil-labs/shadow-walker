@@ -13,7 +13,7 @@ const spans=(value:string)=>value.split(',').map(v=>v.trim()).filter(Boolean).sl
 
 type VisualNode={
   id:string;type:'arrival'|'draft'|'waypoint';label:string;parentIds:string[];position?:Position;proposal?:Proposal;
-  draftId?:string;draftStatus?:'pending'|'reserved';question?:string;shift?:SemanticShift;index:number;
+  draftId?:string;draftStatus?:'pending'|'reserved'|'landed'|'discarded';question?:string;shift?:SemanticShift;index:number;
 };
 type Point={x:number;y:number;depth:number};
 
