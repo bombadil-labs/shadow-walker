@@ -83,8 +83,9 @@ A shift can retain:
 - preserved invariants;
 - unexpected connections;
 - new affordances / possible directions;
-- surprise level and notes;
-- optional future measured displacement with method/model provenance.
+- surprise level and notes.
+
+Future measured displacement belongs in a separate immutable measurement artifact with its own method/model provenance. It must not be written into the historical walker report.
 
 The UI should expose “what entered here” and “what still held” before exposing schema details.
 
@@ -234,6 +235,8 @@ Possible provenance for a direction includes human-offered, walker-sensed, break
 A future export from any Arrival should be capable of becoming a **coordinate chart around that arrival**, not merely one embedding vector.
 
 The export should preserve path, baseline, sibling/counterfactual contrasts, semantic shift, anchors and stimuli so an instrumented model can produce a local activation manifold across layers/features. This enables experiments such as path-conditioned activation differences, feature/circuit attribution, ablation/steering and cross-model comparison.
+
+Mechanistic/embedding measurements are **separate append-only artifacts**, never fields a walker may populate inside its semantic-shift report. This matters both epistemically and architecturally: accepted Arrivals are immutable historical records, while a manifold may be computed days later by a particular model/tool/method. The measurement therefore carries its own provenance and can coexist with alternative measurements without rewriting what the walk reported at the time.
 
 The mechanistic manifold is one projection onto one participant's internal computation. It must never be represented as the ontological truth of the ecological Arrival.
 
