@@ -21,9 +21,17 @@ jobs:
       - run: npm run check
 
   browser:
-    name: browser cartography and review
+    name: browser ${{ matrix.surface }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - surface: embedded-app
+            spec: tests/ui.spec.ts
+          - surface: standalone-dashboard
+            spec: tests/dashboard.spec.ts
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,11 +42,11 @@ jobs:
       - name: Build production bundles
         run: npm run build
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:browser
+      - run: npx playwright test ${{ matrix.spec }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: browser-validation-${{ github.run_id }}
+          name: browser-${{ matrix.surface }}-${{ github.run_id }}
           path: |
             playwright-report/
             test-results/
