@@ -15,7 +15,10 @@ const code = (expected: string) => (error: unknown) => error instanceof DomainEr
 function proposal(parentIds: string[] = ['root'], localId = 'arrival'): MoveOutput {
   return { positions: [{ localId, kind: 'excavation', meaning: 'A possible direction, not an established result.',
     parentIds, anchors: [{ id: 'concrete', detail: 'A concrete fixture retained in this exploration.' }], structuralViews: [],
-    uncertainty: ['A human review records acceptance, not verification.'], nextQuestion: 'What would change the next question?' }] };
+    uncertainty: ['A human review records acceptance, not verification.'], nextQuestion: 'What would change the next question?',
+    semanticShift: { baselineArrivalIds: [parentIds[0]!], summary: 'The fixture moves from a generic direction toward a testable changed question.',
+      newlySalient: [{span:'changed question',salience:'medium'}], receded: [], preservedInvariants: ['Human review remains required.'],
+      unexpectedConnections: [], newAffordances: ['Ask what changed.'], surprise: {level:'medium',notes:'Fixture shift for cartography tests.'} } }] };
 }
 function bigProposal(parentIds: string[], width = 7500): MoveOutput {
   const output = proposal(parentIds);
