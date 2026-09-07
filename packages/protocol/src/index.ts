@@ -17,8 +17,15 @@ const position = proposal.omit({localId:true}).extend({id, explorationId:id, kin
   epistemicStatus:z.enum(['user-intention','hypothesis']),createdAt:text});
 const exploration = z.object({id,title:text,intention:text,rootId:id,frame,revision:z.number().int().positive(),createdAt:text}).strict();
 const draft = z.object({id,explorationId:id,moveId:id,version:z.number().int().positive(),status:z.enum(['pending','reserved','landed','discarded']),output,createdAt:text}).strict();
+const nonnegative = z.number().int().nonnegative();
+const context = z.object({
+  limits: z.object({maxOutputBytes:nonnegative, maxPacketBytes:nonnegative, maxPathsPerInput:nonnegative, maxPathDepth:nonnegative,
+    maxAncestorVisitsPerInput:nonnegative, maxReservedDrafts:nonnegative}).strict(),
+  paths: z.object({complete:z.boolean(), included:nonnegative, truncatedInputIds:z.array(id)}).strict(),
+  reserves: z.object({total:nonnegative, included:nonnegative, omitted:nonnegative}).strict(),
+}).strict();
 const packet = z.object({protocolVersion:z.literal('0.1'),moveId:id,kind:z.literal('walk'),explorationId:id,frame,originalIntention:text,
-  selectedInputs:z.array(position),orderedPaths:z.array(z.array(id)),reserves:z.array(draft),priorRecordedWaypoint:position,
+  context:context.optional(),selectedInputs:z.array(position),orderedPaths:z.array(z.array(id)),reserves:z.array(draft),priorRecordedWaypoint:position,
   humanDirection:text,dependencyVersions:z.object({exploration:z.number().int(),frame:z.number().int()}),
   budget:z.object({maxMoves:z.literal(1),maxPositions:z.literal(2)}),instructions:strings,
   outputContract:z.object({kinds:z.tuple([z.literal('excavation'),z.literal('question')]),localParentPrefix:z.literal('draft:')})}).strict();

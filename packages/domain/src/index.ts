@@ -1,3 +1,6 @@
+import type { MoveContext } from './context.ts';
+import { jsonByteLength, WALK_LIMITS } from './limits.ts';
+
 /** Domain code has no SDK, UI, database, or model dependency. */
 export type Anchor = { id: string; detail: string; source?: string };
 export type StructuralView = {
@@ -27,6 +30,8 @@ export type Draft = {
 };
 export type MovePacket = {
   protocolVersion: '0.1'; moveId: string; kind: 'walk'; explorationId: string;
+  /** Optional only for reading persisted packets created before context budgeting. */
+  context?: MoveContext;
   frame: Frame; originalIntention: string; selectedInputs: Position[];
   orderedPaths: string[][]; reserves: Draft[]; priorRecordedWaypoint: Position;
   humanDirection: string; dependencyVersions: { exploration: number; frame: number };
@@ -51,7 +56,9 @@ export function text(value: unknown, name: string, max = 8000): asserts value is
     'INVALID_INPUT', `${name} must be nonempty text of at most ${max} characters.`);
 }
 function object(value: unknown): asserts value is Record<string, unknown> {
-  requireThat(value !== null && typeof value === 'object' && !Array.isArray(value), 'INVALID_INPUT', 'Expected an object.');
+  requireThat(value !== null && typeof value === 'object' && !Array.isArray(value)
+    && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null),
+    'INVALID_INPUT', 'Expected a plain JSON object.');
 }
 function strings(value: unknown, name: string): asserts value is string[] {
   requireThat(Array.isArray(value) && value.length <= 32, 'INVALID_INPUT', `${name} must be an array of at most 32 strings.`);
@@ -81,18 +88,25 @@ export function validateOutput(value: unknown): asserts value is MoveOutput {
       'INVALID_INPUT', 'Include one to sixteen concrete anchors.');
     const anchorIds = new Set<string>();
     for (const a of p.anchors) {
-      object(a); text(a.id, 'anchor id', 64); text(a.detail, 'anchor detail');
+      object(a);
+      requireThat(Object.keys(a).every(k => ['id','detail','source'].includes(k)), 'INVALID_INPUT', 'Unknown anchor field.');
+      text(a.id, 'anchor id', 64); text(a.detail, 'anchor detail');
       requireThat(!anchorIds.has(a.id), 'INVALID_INPUT', 'Anchor IDs must be unique within a position.');
       anchorIds.add(a.id); if (a.source !== undefined) text(a.source, 'anchor source');
     }
     requireThat(Array.isArray(p.structuralViews) && p.structuralViews.length <= 8, 'INVALID_INPUT', 'At most eight structural views.');
     for (const v of p.structuralViews) {
-      object(v); text(v.label, 'structural label'); text(v.applicability, 'applicability');
+      object(v);
+      requireThat(Object.keys(v).every(k => ['label','entities','relationships','invariants','applicability','anchorIds','omissions','mismatches'].includes(k)),
+        'INVALID_INPUT', 'Unknown structural view field.');
+      text(v.label, 'structural label'); text(v.applicability, 'applicability');
       for (const k of ['entities','relationships','invariants','anchorIds','omissions','mismatches']) strings(v[k], k);
       requireThat((v.anchorIds as string[]).length > 0 && (v.anchorIds as string[]).every(id => anchorIds.has(id)),
         'INVALID_ANCHOR', 'Structural views must refer to concrete anchors on this position.');
     }
   }
+  requireThat(jsonByteLength(value) <= WALK_LIMITS.maxOutputBytes, 'BUDGET_EXCEEDED',
+    `A draft must fit in ${WALK_LIMITS.maxOutputBytes} serialized UTF-8 bytes. Shorten the proposal without removing its uncertainty or anchors.`);
 }
 /** Returns a topological order. Each proposal must lead back to an explicitly selected input. */
 export function orderProposals(output: MoveOutput, existing: Position[], selected: string[]): Proposal[] {
