@@ -20,7 +20,7 @@ Add human-entered observations with provenance, probe design without automatic r
 
 ## M4 — operation cards, trumps, and bounded scouting
 
-Implement the seam between stalled operation search and semantic walking; a walk arrival may become an operation card. Ordered trumps remain explicit. Scouting requires user authorization, budgets, resumable checkpointss, and visible results. It is never described as hidden background agents.
+Implement the seam between stalled operation search and semantic walking; a walk arrival may become an operation card. Ordered trumps remain explicit. Scouting requires user authorization, budgets, resumable checkpoints, and visible results. It is never described as hidden background agents.
 
 ## M5 — provisional consolidation and durability tools
 
