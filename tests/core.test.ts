@@ -129,7 +129,7 @@ test('out-of-order child references land atomically in topological order', () =>
   const s=new Store();
   try {
     const snap=s.create(seed); const p=s.prepare({explorationId:snap.exploration.id,selectedIds:[snap.exploration.rootId],humanDirection:'One step.',requestId:'p'});
-    const output=proposal(snap.exploration.rootId); const child={...structuredClone(output.positions[0]!),localId:'child',parentIds:['draft:arrival']}; output.positions.unshift(child);
+    const output=proposal(snap.exploration.rootId); const child={...structuredClone(output.positions[0]!),localId:'child',parentIds:['draft:arrival']}; child.semanticShift={...child.semanticShift!,baselineArrivalIds:['draft:arrival']}; output.positions.unshift(child);
     const d=s.submit({moveId:p.moveId,output,requestId:'s'}); const result=s.review(decision(s,d.id));
     assert.equal(result.positions.length,3); assert.deepEqual(result.positions[2]!.parentIds,[result.positions[1]!.id]);
   } finally{s.close();}
