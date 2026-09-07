@@ -30,6 +30,15 @@ test('new walks are protocol 0.2, line-situated, and require a reported semantic
   }finally{store.close();}
 });
 
+test('walker-reported semantic shifts cannot smuggle mechanistic measurements',()=>{
+  const store=new Store();try{
+    const s=store.create(seed);const packet=store.prepare({explorationId:s.exploration.id,selectedIds:[s.exploration.rootId],humanDirection:'Move once.',requestId:'p'});
+    const output=proposal(s.exploration.rootId);Object.assign(output.positions[0]!.semanticShift!,{measured:{method:'claimed hidden state',displacement:1}});
+    assert.throws(()=>store.submit({moveId:packet.moveId,output,requestId:'s'}),code('INVALID_INPUT'));
+    assert.equal(store.read(s.exploration.id).drafts.length,0);
+  }finally{store.close();}
+});
+
 test('landing preserves shift, line membership and typed transition atomically',()=>{
   const store=new Store();try{
     const s=store.create(seed);const packet=store.prepare({explorationId:s.exploration.id,selectedIds:[s.exploration.rootId],humanDirection:'Move once.',requestId:'p'});
