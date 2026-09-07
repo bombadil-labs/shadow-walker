@@ -16,6 +16,10 @@ function Workbench(){
   const original=draft?JSON.stringify(draft.output,null,2):'';const dirty=editor!==original;
   const reviewable=draft?.status==='pending'||draft?.status==='reserved';
   const permitted=!!ticket && ticket.draftId===draft?.id && ticket.version===draft?.version;
+  useEffect(()=>{
+    // Only UI lifecycle booleans: never send exploration data or capabilities here.
+    if(window.parent!==window && window.location.pathname==='/app/widget')window.parent.postMessage({type:'shadow-walker/ui-state',dirty,busy},'*');
+  },[dirty,busy]);
   function receive(result:CallToolResult){
     if(result.isError)throw new Error(result.content.filter(c=>c.type==='text').map(c=>c.text).join('\n'));
     const data=result.structuredContent as {snapshot?:Snapshot;focusedDraftId?:string}|undefined;
@@ -24,7 +28,7 @@ function Workbench(){
     const d=data.snapshot.drafts.find(d=>d.id===data.focusedDraftId);
     setEditor(d?JSON.stringify(d.output,null,2):'');
     setTicket(result._meta?.['shadowWalker/review'] as ReviewTicket|undefined);
-    setError('');
+    setError('');setNotice('');
   }
   useEffect(()=>{
     bridge.ontoolresult=result=>{try{receive(result);}catch(e){setError(String(e));}};

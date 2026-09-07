@@ -3,9 +3,12 @@ import type { Server } from 'node:http';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Store } from '../../../packages/storage/src/index.ts';
 import { createMcpServer } from './mcp.ts';
+import { dashboardRoutes } from './dashboard.ts';
+import type { DashboardPages } from './dashboard.ts';
 
 /** Local development transport only. Never put this unauthenticated endpoint behind a public tunnel. */
-export async function startHttp(store: Store, html: string, port=3001): Promise<Server> {
+export async function startHttp(store: Store, html: string, port=3001, pages?: DashboardPages): Promise<Server> {
+  const dashboard = pages ? dashboardRoutes(store, html, pages) : undefined;
   const http=createServer(async(req,res)=>{
     const address=http.address();
     const actualPort=typeof address==='object' && address ? address.port : port;
@@ -17,6 +20,7 @@ export async function startHttp(store: Store, html: string, port=3001): Promise<
     if(req.method==='GET' && req.url==='/healthz') {
       res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({status:'ok',mode:'local-only'}));return;
     }
+    if(dashboard && await dashboard(req,res)) return;
     if(req.url!=='/mcp'){res.writeHead(404);res.end();return;}
     if(req.method!=='POST'){res.writeHead(405,{'Allow':'POST'});res.end();return;}
     if(!req.headers['content-type']?.startsWith('application/json')){res.writeHead(415);res.end();return;}

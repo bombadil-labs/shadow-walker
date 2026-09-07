@@ -11,8 +11,9 @@ let close:()=>Promise<void>;
 if(process.argv.includes('--http')){
   const port=Number(process.env.PORT ?? 3001);
   if(!Number.isInteger(port)||port<1||port>65535)throw new Error('PORT must be 1–65535.');
-  const http=await startHttp(store,html,port);
+  const http=await startHttp(store,html,port,{dashboard:readFileSync(resolve('dist/dashboard/index.html'),'utf8'),about:readFileSync(resolve('dist/site/index.html'),'utf8')});
   close=()=>new Promise<void>((resolve,reject)=>http.close(error=>error?reject(error):resolve()));
+  console.error(`Shadow Walker dashboard: http://localhost:${port}/`);
   console.error(`Shadow Walker local-only MCP: http://127.0.0.1:${port}/mcp`);
 }else{
   const server=createMcpServer(store,html);await server.connect(new StdioServerTransport());close=()=>server.close();

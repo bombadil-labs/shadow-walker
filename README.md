@@ -2,71 +2,63 @@
 
 A persistent, human-reviewed discovery workbench. **Follow what changes the next question.**
 
-Shadow Walker brings Semantic Walk's one-step-at-a-time excavation together with Flight Lines' concrete anchors and structural comparisons. A useful discovery changes the direction of the next exploration; it is not merely decoration on a predetermined conclusion. The conversation's host model does the thinking. This server stores the exploration and mediates review: no separate model API key, background agent, or standalone prompt window.
+Think in your AI chat; keep the exploration in Shadow Walker. The MCP tools, embedded app and standalone browser dashboard share one SQLite-backed record. There is no separate model API key, hidden background agent, or automatic next move. This is deliberately recorded exploration—not an archive of every chat message.
 
-## Intended use
+## Open the standalone workbench
 
-Run the server, connect its MCP to a chat, explore an idea with the host model, and inspect the saved exploration in the rendered Shadow Walker app. Chat tools and the embedded app share one SQLite-backed record. The app is an exploration inspector, **not an automatic archive of every chat message or a separately hosted dashboard**. See the [user journey and current boundaries](docs/user-journey.md).
-
-## First implementation: the M1 guided-walk foundation
-
-The implemented path is:
-
-`create_exploration → read_exploration → prepare_move → submit_move → human review → read_exploration`
-
-A walk proposes one or two positions. The embedded MCP Apps widget offers **Land / Revise / Keep in reserve / Discard**, with **Meaning / Structure / Both** views, editable draft JSON, uncertainty, concrete anchors, ancestry, and saved drafts. Land records acceptance, not verification. There is no automatic next move. Earlier draft revisions remain in the event ledger; a dedicated revision-history browser is not yet implemented.
-
-SQLite is authoritative. Accepted positions are immutable; materialized state, an append-only event ledger, capability consumption, and idempotency receipts are committed in one transaction. An interrupted prepared move and unreviewed drafts remain readable after restart.
-
-**Status:** the combined M1/context implementation passed the Node 24 CI workflow: full typecheck, production build, 42 core tests, the integration suite (4 SDK-over-HTTP tests and 2 context-schema tests), and 4 sandboxed browser tests. The required dependency audit also passed. The 42 core tests were rerun successfully during self-review. A live ChatGPT session has **not** been validated. This is not a public deployment-ready or security-certified release. See [verification](docs/verification.md), [bounded-context verification](docs/bounded-context.md), [architecture](docs/architecture.md), and [roadmap](docs/roadmap.md).
-
-## Bounded context
-
-New guided-walk packets include bounded ancestry/reserve previews and explicit omission metadata. Selected findings and the full persisted graph are retained. Drafts have an aggregate UTF-8 byte limit, and oversized preparation or review fails atomically. See [bounded-context policy and verification](docs/bounded-context.md) for limits and compatibility.
-
-## Run from the repository root
-
-Use Node 24 LTS (24.11 or later in the 24.x line).
+Use Node 24.11 or later in the 24.x line. From the repository root:
 
 ```sh
 npm ci
 npm run check
-npm start
+node dist/apps/server/src/index.js --http
 ```
 
-The default transport is stdio, intended for a trusted local MCP host. Build the widget before starting the server. Configure a stdio host to launch `node dist/apps/server/src/index.js` directly from the repository root, rather than an npm wrapper that might print to stdout. Server logs go to stderr. The database defaults to `data/shadow-walker.sqlite`; set `SHADOW_WALKER_DB` to change it. Preserve that database across restarts.
+Open **http://localhost:3001/**. Pick a saved exploration, inspect its findings, or review a pending draft. Refresh after a change in chat. A selected exploration has a bookmarkable page address. The same server still exposes `/mcp`; existing private tunnel configuration does not change. `/about` contains the landing page and connection guide.
 
-For a local MCP inspector using Streamable HTTP:
+To update an existing checkout, stop only the app server, run `git pull --ff-only`, rebuild with the commands above and restart. Keep `data/`: the default database is `data/shadow-walker.sqlite`. `SHADOW_WALKER_DB` overrides the database location, and `PORT` overrides 3001. The dashboard requires no database migration or import. See [standalone setup and trust boundaries](docs/standalone-dashboard.md).
+
+**Local mode is single-user and unauthenticated.** The listener stays on 127.0.0.1. Browser-origin/CSRF protections are not account authentication. Do not expose it through arbitrary public forwarding or use the local Store on ephemeral function storage.
+
+For a stdio MCP host, launch `node dist/apps/server/src/index.js` directly with the repository root as the working directory; do not use an npm wrapper that might write banners to protocol stdout. The standalone dashboard is served by HTTP mode. Server logs go to stderr.
+
+## Guided discovery, not premature closure
+
+`create_exploration → read_exploration → prepare_move → submit_move → human review → read_exploration`
+
+A walk proposes one or two positions. The shared inspector offers **Meaning / Structure / Both** and **Land / Revise / Keep in reserve / Discard**. Findings retain concrete anchors, uncertainty, ancestry and a next question. Editing requires a separate saved revision before Land. Land means accepted into the exploration, not verified as true. The walk remains paused afterward.
+
+Accepted positions are immutable. SQLite transactions include graph changes, an append-only event ledger, capability consumption and idempotency receipts. New move packets have bounded ancestry/reserve previews and explicit omission metadata; the full graph stays stored. Earlier draft revisions remain in the ledger; a dedicated historical revision browser, rich graph navigation, branching and weave remain future work.
+
+## Verification and current status
+
+The standalone implementation at `e3cb0b7` passed both Node 24 CI checks: full typecheck/build, **48 native tests, 14 integration tests and 7 browser tests**, plus the required dependency audit. The 48 native tests and a focused HTTP-security typecheck also passed locally. See [verification](docs/verification.md) and [standalone verification](docs/standalone-dashboard.md).
+
+A basic private ChatGPT trial was exercised with the user: a draft, reported human Land, readback, reported server restart, and reopening the same saved finding. This is not full host/security certification. Real Claude behavior, hosted OAuth and two-account isolation have not been validated.
 
 ```sh
-npm start -- --http
-```
-
-This binds **127.0.0.1 only**, at port 3001 (`PORT` overrides it). The endpoint is `/mcp`; `/healthz` reports local-only status. Host/Origin checks and a 1 MiB request limit are enabled. **Do not expose this unauthenticated listener through an arbitrary public tunnel.** Public deployment and user-scoped authorization are outstanding. For a private ChatGPT trial, current platform documentation also offers Secure MCP Tunnel; its credentials, access restrictions, and this application's UI behavior still need to be configured and verified. See [connection boundaries](docs/user-journey.md#first-private-chatgpt-trial-versus-public-hosting).
-
-For browser checks after building:
-
-```sh
+# Additional browser checks after building
 npx playwright install chromium
 npm run test:browser
-```
 
-The core can be tested without downloading packages:
-
-```sh
+# Dependency-free core/security tests
 npm run test:core
 ```
 
-Dependency versions are explicit and `package-lock.json` preserves the registry-resolved graph validated by CI. Use `npm ci` for repeatable installs. Upgrade dependencies deliberately and rerun the audit and complete test suite.
+Dependencies are locked; no new packages were added for the dashboard. Use `npm ci` and rerun the audit and full tests for upgrades.
+
+## Public beta and Vercel
+
+`vercel.json` deploys **only the static landing page in `apps/site`**. Import the repository root into Vercel with Framework Preset **Other** and preserve the checked-in settings. This does not expose the MCP, deploy the database, create accounts or provision an identity provider. No Vercel deployment was performed in this change.
+
+The proposed shortest beta path is Vercel for the site plus a single durable Node/SQLite backend and managed identity. An all-on-Vercel backend requires a managed database/storage-adapter change. User ownership, web login, MCP OAuth, backup/restore, privacy controls and real host onboarding are release gates, not merely a login screen. See [public-release plan](docs/public-release.md) and [issue #5](https://github.com/bombadil-labs/shadow-walker/issues/5).
 
 ## Repository map
 
-- `packages/domain`: typed findings, frames, move packets, and graph validation; no SDK dependency.
-- `packages/storage`: SQLite migrations, review transactions, capabilities, and event history.
-- `packages/protocol`: Zod input/output contracts for MCP.
-- `apps/server`: official MCP SDK adapters, stdio and local HTTP transport.
-- `apps/widget`: React/Vite single-file MCP Apps review UI.
-- `skills/shadow-walker`: host-model operating instructions.
-- `tests`: core invariants, SDK transport integration, and browser host fixture.
+- `packages/domain`, `packages/storage`, `packages/protocol`: discovery model, transactional storage and MCP schemas.
+- `apps/server`: MCP adapters, loopback HTTP and guarded local browser host API.
+- `apps/widget`: shared React MCP Apps inspector; `apps/dashboard`: standalone AppBridge host.
+- `apps/site`: static landing and self-hosted ChatGPT/Claude instructions; no user data or live signup.
+- `skills/shadow-walker`, `docs`, `tests`: host guidance, architecture/roadmap and verification.
 
-The pre-existing `test.md` connection-test file is intentionally untouched. This project is distinct from Loam and groovy-commutator.
+The pre-existing `test.md` remains untouched. Shadow Walker is distinct from Loam and groovy-commutator.

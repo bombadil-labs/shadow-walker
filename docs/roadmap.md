@@ -6,15 +6,19 @@ Recovered the design, inspected the existing repository, preserved its connectio
 
 ## M1 — guided walk and human review
 
-Implementation includes intention/frame creation, persistent positions, a bounded move packet, draft submission, review-gated Land, revision/reserve/discard persistence, an inspector, and MCP tools plus UI resource. Core tests exercise restart persistence, graph validity, capabilities, and atomic review. The combined implementation passes the Node 24 CI workflow: typecheck, build, 42 core tests, 4 SDK transport tests, 2 context-schema tests, 4 sandboxed browser tests, and the dependency audit. Follow docs/verification.md and docs/bounded-context.md for the recorded runs; automated tests are not a live-host certification.
+Implementation includes intention/frame creation, persistent positions, a bounded move packet, draft submission, review-gated Land, revision/reserve/discard persistence, an inspector, and MCP tools plus UI resource. Core tests exercise restart persistence, graph validity, capabilities, and atomic review. The original combined M1 implementation passed the Node 24 CI workflow: typecheck, build, 42 core tests, 4 SDK transport tests, 2 context-schema tests, 4 sandboxed browser tests, and the dependency audit. Follow docs/verification.md and docs/bounded-context.md for the recorded runs; automated tests are not a live-host certification.
 
-### Next acceptance milestone — a real chat and rendered app
+### Standalone workbench and first private live loop
 
-The [product contract](user-journey.md) is: run the server, connect its MCP to a chat, explore an idea, and inspect the saved exploration in the embedded app. It is not automatic full-transcript capture or a separate chat product.
+The standalone dashboard, shared review widget, static landing/instructions page and site-only Vercel config are implemented. The combined workflow now passes 48 native tests, 14 integration tests and 7 browser tests. See [standalone verification](standalone-dashboard.md).
 
-Validate the first private, single-user round trip before claiming that experience works in ChatGPT. Current OpenAI documentation offers Secure MCP Tunnel as well as public HTTPS. A private tunnel must be configured with the right credentials and account/workspace access; the actual widget, private metadata, human review, and reopen/restart behavior must be tested. A native private tunnel is not the same as exposing the unauthenticated listener through a public forwarding service. Public/shared hosting still requires application authentication, authorization, and user-scoped review capabilities. No tunnel or remote deployment is currently provisioned by this project.
+The user exercised the basic private ChatGPT draft/Land/readback/reported-restart/reopen loop. Full host behavior and Claude still require live testing; this is not a public-service security certification.
 
-Package the detailed host skill when automatic skill discovery is needed. The current server supplies tool and initialization instructions, but connecting MCP alone does not install the repository's SKILL.md.
+### Next release milestone — authenticated public beta
+
+The [public-release plan](public-release.md) and [issue #5](https://github.com/bombadil-labs/shadow-walker/issues/5) track durable backend hosting, managed identity, principal-scoped storage/capabilities/receipts, MCP OAuth, two-account isolation tests, backups/privacy controls and tested onboarding. Vercel can host the static landing immediately; it cannot make a local SQLite file persistent shared function storage. No hosted account service, public MCP or deployment is delivered by the static site.
+
+Package the detailed host skill when automatic discovery is needed; a connected MCP alone does not install the repository's SKILL.md.
 
 ## M2 — branching and weave
 
