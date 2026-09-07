@@ -10,9 +10,7 @@ const shiftSpan=z.object({span:text.max(200),salience,notes:z.string().trim().mi
 const semanticShift=z.object({
   baselineArrivalIds:z.array(id).min(1).max(32),summary:text,newlySalient:z.array(shiftSpan).max(16),receded:z.array(shiftSpan).max(16),
   preservedInvariants:strings,unexpectedConnections:strings,newAffordances:strings,
-  surprise:z.object({level:salience,notes:text.max(2000)}).strict(),
-  measured:z.object({method:text.max(500),model:text.max(500).optional(),displacement:z.number().finite().optional(),
-    salientSpans:z.array(z.object({span:text.max(200),deviation:z.number().finite()}).strict()).max(32).optional()}).strict().optional()
+  surprise:z.object({level:salience,notes:text.max(2000)}).strict()
 }).strict();
 export const proposal = z.object({localId: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]*$/).max(64),
   kind: z.enum(['excavation','question']), meaning: text, parentIds: strings.min(1),

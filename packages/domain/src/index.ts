@@ -1,7 +1,7 @@
 import type { MoveContext } from './context.ts';
 import { jsonByteLength, WALK_LIMITS } from './limits.ts';
 import type { CartographySnapshot, Line, SemanticShift } from './cartography.ts';
-export type { CartographySnapshot, Encounter, Line, LineMembership, LineStatus, Operation, OperationApplication, SemanticShift, ShiftSalience, ShiftSpan, StructuralConstraint, Transition, TransitionKind, Waypoint } from './cartography.ts';
+export type { CartographySnapshot, Encounter, Line, LineMembership, LineStatus, Operation, OperationApplication, RepresentationMeasurement, SemanticShift, ShiftSalience, ShiftSpan, StructuralConstraint, Transition, TransitionKind, Waypoint } from './cartography.ts';
 
 /** Domain code has no SDK, UI, database, or model dependency. */
 export type Anchor = { id: string; detail: string; source?: string };
@@ -78,8 +78,8 @@ function strings(value: unknown, name: string): asserts value is string[] {
 }
 function validateShift(value: unknown, parentIds: string[]): asserts value is SemanticShift {
   object(value);
-  requireThat(Object.keys(value).every(k => ['baselineArrivalIds','summary','newlySalient','receded','preservedInvariants','unexpectedConnections','newAffordances','surprise','measured'].includes(k)),
-    'INVALID_INPUT', 'Unknown semantic shift field.');
+  requireThat(Object.keys(value).every(k => ['baselineArrivalIds','summary','newlySalient','receded','preservedInvariants','unexpectedConnections','newAffordances','surprise'].includes(k)),
+    'INVALID_INPUT', 'Unknown semantic shift field. Mechanistic measurements are separate artifacts, not walker reports.');
   strings(value.baselineArrivalIds,'semantic baseline');
   requireThat(value.baselineArrivalIds.length > 0 && value.baselineArrivalIds.every(id => parentIds.includes(id)),
     'INVALID_SHIFT_BASELINE', 'Semantic shift baselines must be immediate parents of this arrival.');
@@ -95,15 +95,6 @@ function validateShift(value: unknown, parentIds: string[]): asserts value is Se
   }
   object(value.surprise); requireThat(Object.keys(value.surprise).every(k=>['level','notes'].includes(k)),'INVALID_INPUT','Unknown surprise field.');
   requireThat(['low','medium','high'].includes(String(value.surprise.level)),'INVALID_INPUT','Invalid surprise level.'); text(value.surprise.notes,'surprise notes',2000);
-  if(value.measured!==undefined) {
-    object(value.measured); requireThat(Object.keys(value.measured).every(k=>['method','model','displacement','salientSpans'].includes(k)),'INVALID_INPUT','Unknown measured shift field.');
-    text(value.measured.method,'measurement method',500); if(value.measured.model!==undefined)text(value.measured.model,'measurement model',500);
-    if(value.measured.displacement!==undefined)requireThat(typeof value.measured.displacement==='number'&&Number.isFinite(value.measured.displacement),'INVALID_INPUT','Measured displacement must be finite.');
-    if(value.measured.salientSpans!==undefined){
-      requireThat(Array.isArray(value.measured.salientSpans)&&value.measured.salientSpans.length<=32,'INVALID_INPUT','At most 32 measured salient spans.');
-      for(const item of value.measured.salientSpans){object(item);text(item.span,'measured span',200);requireThat(typeof item.deviation==='number'&&Number.isFinite(item.deviation),'INVALID_INPUT','Measured deviation must be finite.');}
-    }
-  }
 }
 /** Defensive runtime validation also applies to direct storage callers, not just MCP. */
 export function validateOutput(value: unknown, options: { requireSemanticShift?: boolean } = {}): asserts value is MoveOutput {

@@ -1,5 +1,10 @@
 export type ShiftSalience = 'low' | 'medium' | 'high';
 export type ShiftSpan = { span: string; salience: ShiftSalience; notes?: string };
+
+/**
+ * A phenomenological/cartographic report made during the walk. This is not a
+ * hidden-state measurement, token-probability claim, or mechanistic explanation.
+ */
 export type SemanticShift = {
   /** Immediate visited arrivals used as the reported baseline for this move. */
   baselineArrivalIds: string[];
@@ -10,13 +15,25 @@ export type SemanticShift = {
   unexpectedConnections: string[];
   newAffordances: string[];
   surprise: { level: ShiftSalience; notes: string };
-  /** Reserved for externally computed representations. Never confuse this with the walker's report. */
-  measured?: {
-    method: string;
-    model?: string;
-    displacement?: number;
-    salientSpans?: Array<{ span: string; deviation: number }>;
-  };
+};
+
+/**
+ * Future external measurement attached to an Arrival without rewriting its
+ * immutable historical report. Mechinterp/embedding tooling owns the method and
+ * provenance; model-generated walk output must never populate this object.
+ */
+export type RepresentationMeasurement = {
+  id: string;
+  explorationId: string;
+  arrivalId: string;
+  baselineArrivalIds: string[];
+  kind: 'embedding-displacement' | 'activation-manifold' | 'feature-attribution' | 'other';
+  method: string;
+  model?: string;
+  displacement?: number;
+  salientSpans?: Array<{ span: string; deviation: number }>;
+  artifactRef?: string;
+  createdAt: string;
 };
 
 export type LineStatus = 'active' | 'exploratory' | 'intensifying' | 'dormant' | 'blocked' | 'dissipated' | 'transformed' | 'reterritorialized';
