@@ -6,9 +6,9 @@ Recovered the design, inspected the existing repository, preserved its connectio
 
 ## M1 — guided walk and human review
 
-Implementation includes intention/frame creation, persistent positions, a bounded move packet, draft submission, review-gated Land, revision/reserve/discard history, an inspector, and MCP tools plus UI resource. Core tests exercise restart persistence, graph validity, capabilities, and atomic review. The MCP/React portion still needs dependency installation, complete build/transport/browser checks, and an actual host trial. Follow docs/verification.md; this milestone is not certified complete merely because source files exist.
+Implementation includes intention/frame creation, persistent positions, a bounded move packet, draft submission, review-gated Land, revision/reserve/discard history, an inspector, and MCP tools plus UI resource. Core tests exercise restart persistence, graph validity, capabilities, and atomic review. The complete typecheck, build, 22 core tests, 4 SDK transport tests, and 4 sandboxed browser tests now pass in GitHub Actions. The dependency audit reports zero vulnerabilities. An actual ChatGPT host trial and authenticated remote transport remain outstanding. Follow docs/verification.md; automated tests are not a live-host certification.
 
-Before remote ChatGPT use: resolve dependencies and commit a real lockfile; validate the MCP SDK and browser bridge; implement authenticated remote transport with principal-scoped review capabilities; connect a real host and prove that the model cannot see or replay the review token. Close the browser-host differences with evidence, not assumptions.
+Before remote ChatGPT use: implement authenticated remote transport with principal-scoped review capabilities; connect a real host and prove that the model cannot see or replay the review token. Close the browser-host differences with evidence, not assumptions.
 
 ## M2 — branching and weave
 
@@ -20,7 +20,7 @@ Add human-entered observations with provenance, probe design without automatic r
 
 ## M4 — operation cards, trumps, and bounded scouting
 
-Implement the seam between stalled operation search and semantic walking; a walk arrival may become an operation card. Ordered trumps remain explicit. Scouting requires user authorization, budgets, resumable checkpoints, and visible results. It is never described as hidden background agents.
+Implement the seam between stalled operation search and semantic walking; a walk arrival may become an operation card. Ordered trumps remain explicit. Scouting requires user authorization, budgets, resumable checkpointss, and visible results. It is never described as hidden background agents.
 
 ## M5 — provisional consolidation and durability tools
 
