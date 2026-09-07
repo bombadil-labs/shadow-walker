@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "packages/domain/src/**/*.ts",
+    "packages/storage/src/**/*.ts",
+    "tests/core.test.ts",
+    "tests/context.test.ts",
+    "tests/fixtures.ts"
+  ]
+}
