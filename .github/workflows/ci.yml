@@ -1,4 +1,4 @@
-name: Validate guided walk
+name: Validate Shadow Walker
 on:
   push:
   pull_request:
@@ -6,6 +6,7 @@ permissions:
   contents: read
 jobs:
   check:
+    name: typecheck, build, unit and integration
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -18,14 +19,27 @@ jobs:
       - name: Inspect dependency vulnerabilities
         run: npm audit --audit-level=high
       - run: npm run check
+
+  browser:
+    name: browser cartography and review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Build production bundles
+        run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: validation-artifacts
+          name: browser-validation-${{ github.run_id }}
           path: |
-            package-lock.json
             playwright-report/
             test-results/
           if-no-files-found: ignore
