@@ -16,7 +16,6 @@ jobs:
       - name: Resolve dependencies (lockfile bootstrap)
         run: npm install
       - name: Inspect dependency vulnerabilities
-        continue-on-error: true
         run: npm audit --audit-level=high
       - run: npm run check
       - run: npx playwright install --with-deps chromium

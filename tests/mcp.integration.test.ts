@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { request as httpRequest } from 'node:http';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -65,7 +66,12 @@ describe('real SDK client over Streamable HTTP',()=>{
   it('refuses hostile Origin/Host, malformed JSON, and unsupported methods',async()=>{
     const {url}=await host();
     expect((await fetch(url,{method:'POST',headers:{Origin:'https://evil.example','content-type':'application/json'},body:'{}'})).status).toBe(403);
-    expect((await fetch(url,{method:'POST',headers:{Host:'evil.example','content-type':'application/json'},body:'{}'})).status).toBe(403);
+    // Fetch may normalize Host. Use node:http to test the actual hostile wire header.
+    const hostileHostStatus=await new Promise<number|undefined>((resolve,reject)=>{
+      const req=httpRequest(url,{method:'POST',headers:{Host:'evil.example','content-type':'application/json'}},res=>{res.resume();resolve(res.statusCode);});
+      req.on('error',reject);req.end('{}');
+    });
+    expect(hostileHostStatus).toBe(403);
     expect((await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:'{'})).status).toBe(400);
     expect((await fetch(url)).status).toBe(405);
   });
