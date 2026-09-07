@@ -14,7 +14,7 @@ A walk proposes one or two positions. The embedded MCP Apps widget offers **Land
 
 SQLite is authoritative. Accepted positions are immutable; materialized state, an append-only event ledger, capability consumption, and idempotency receipts are committed in one transaction. An interrupted prepared move and unreviewed drafts remain readable after restart.
 
-**Status:** the dependency-free core is locally tested. The MCP/React adapters and full transport/browser tests require installing the declared packages and running the checks below. A live ChatGPT session has **not** been validated. This is not a remotely deployable or security-certified release. See [verification](docs/verification.md), [architecture](docs/architecture.md), and [roadmap](docs/roadmap.md).
+**Status:** the full typecheck, production build, 22 core tests, 4 SDK-over-HTTP tests, and 4 sandboxed browser tests passed in GitHub Actions on Node 24. The validated dependency audit reported zero vulnerabilities. A live ChatGPT session has **not** been validated. This is not a remotely deployable or security-certified release. See [verification](docs/verification.md), [architecture](docs/architecture.md), and [roadmap](docs/roadmap.md).
 
 ## Bounded context
 
@@ -25,7 +25,7 @@ New guided-walk packets include bounded ancestry/reserve previews and explicit o
 Use Node 24 LTS (24.11 or later in the 24.x line).
 
 ```sh
-npm install
+npm ci
 npm run check
 npm start
 ```
@@ -53,7 +53,7 @@ The core can be tested without downloading packages:
 npm run test:core
 ```
 
-Dependency versions are explicit, but a registry-generated lockfile is still required before treating builds as reproducible. Do not fabricate one without resolving the dependency graph.
+Dependency versions are explicit and `package-lock.json` preserves the registry-resolved graph validated by CI. Use `npm ci` for repeatable installs. Upgrade dependencies deliberately and rerun the audit and complete test suite.
 
 ## Repository map
 
