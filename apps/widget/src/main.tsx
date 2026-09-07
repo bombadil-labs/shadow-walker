@@ -92,7 +92,7 @@ function Workbench(){
     const data=result.structuredContent as {snapshot?:Snapshot;focusedDraftId?:string}|undefined;if(!data?.snapshot)return;
     setSnapshot(data.snapshot);setFocused(data.focusedDraftId);const d=data.snapshot.drafts.find(d=>d.id===data.focusedDraftId);
     setEditOutput(d?clone(d.output):undefined);setTicket(result._meta?.['shadowWalker/review'] as ReviewTicket|undefined);setEditing(false);setError('');setNotice('');
-    if(d)setSelected(`proposal:${d.id}:${d.output.positions[0]?.localId}`);else setSelected(data.snapshot.positions.at(-1)?.id);
+    if(d&&(d.status==='pending'||d.status==='reserved'))setSelected(`proposal:${d.id}:${d.output.positions[0]?.localId}`);else setSelected(data.snapshot.positions.at(-1)?.id);
   }
   useEffect(()=>{bridge.ontoolresult=result=>{try{receive(result);}catch(e){setError(String(e));}};void bridge.connect().catch(()=>setError('Open this view in a trusted MCP Apps host. Review actions require the host bridge.'));return()=>{void bridge.close();};},[]);
   async function reopen(draftId?:string){if(!snapshot)return;setBusy(true);setNotice('');try{receive(await bridge.callServerTool({name:'open_exploration',arguments:{explorationId:snapshot.exploration.id,...(draftId?{draftId}:{})}}));retry.current=undefined;}catch(e){setError(String(e));}finally{setBusy(false);}}
