@@ -4,21 +4,25 @@ A persistent, human-reviewed discovery workbench. **Follow what changes the next
 
 Shadow Walker brings Semantic Walk's one-step-at-a-time excavation together with Flight Lines' concrete anchors and structural comparisons. A useful discovery changes the direction of the next exploration; it is not merely decoration on a predetermined conclusion. The conversation's host model does the thinking. This server stores the exploration and mediates review: no separate model API key, background agent, or standalone prompt window.
 
+## Intended use
+
+Run the server, connect its MCP to a chat, explore an idea with the host model, and inspect the saved exploration in the rendered Shadow Walker app. Chat tools and the embedded app share one SQLite-backed record. The app is an exploration inspector, **not an automatic archive of every chat message or a separately hosted dashboard**. See the [user journey and current boundaries](docs/user-journey.md).
+
 ## First implementation: the M1 guided-walk foundation
 
 The implemented path is:
 
 `create_exploration → read_exploration → prepare_move → submit_move → human review → read_exploration`
 
-A walk proposes one or two positions. The embedded MCP Apps widget offers **Land / Revise / Keep in reserve / Discard**, with **Meaning / Structure / Both** views, editable draft JSON, uncertainty, concrete anchors, ancestry, and draft history. Land records acceptance, not verification. There is no automatic next move.
+A walk proposes one or two positions. The embedded MCP Apps widget offers **Land / Revise / Keep in reserve / Discard**, with **Meaning / Structure / Both** views, editable draft JSON, uncertainty, concrete anchors, ancestry, and saved drafts. Land records acceptance, not verification. There is no automatic next move. Earlier draft revisions remain in the event ledger; a dedicated revision-history browser is not yet implemented.
 
 SQLite is authoritative. Accepted positions are immutable; materialized state, an append-only event ledger, capability consumption, and idempotency receipts are committed in one transaction. An interrupted prepared move and unreviewed drafts remain readable after restart.
 
-**Status:** the full typecheck, production build, 22 core tests, 4 SDK-over-HTTP tests, and 4 sandboxed browser tests passed in GitHub Actions on Node 24. The validated dependency audit reported zero vulnerabilities. A live ChatGPT session has **not** been validated. This is not a remotely deployable or security-certified release. See [verification](docs/verification.md), [architecture](docs/architecture.md), and [roadmap](docs/roadmap.md).
+**Status:** the combined M1/context implementation passed the Node 24 CI workflow: full typecheck, production build, 42 core tests, the integration suite (4 SDK-over-HTTP tests and 2 context-schema tests), and 4 sandboxed browser tests. The required dependency audit also passed. The 42 core tests were rerun successfully during self-review. A live ChatGPT session has **not** been validated. This is not a public deployment-ready or security-certified release. See [verification](docs/verification.md), [bounded-context verification](docs/bounded-context.md), [architecture](docs/architecture.md), and [roadmap](docs/roadmap.md).
 
 ## Bounded context
 
-New guided-walk packets include bounded ancestry/reserve previews and explicit omission metadata. Selected findings and the full persisted graph are retained. Drafts have an aggregate UTF-8 byte limit, and oversized preparation or review fails atomically. See [bounded-context policy and verification](docs/bounded-context.md) for limits, compatibility, and the 42-test core verification record.
+New guided-walk packets include bounded ancestry/reserve previews and explicit omission metadata. Selected findings and the full persisted graph are retained. Drafts have an aggregate UTF-8 byte limit, and oversized preparation or review fails atomically. See [bounded-context policy and verification](docs/bounded-context.md) for limits and compatibility.
 
 ## Run from the repository root
 
@@ -30,7 +34,7 @@ npm run check
 npm start
 ```
 
-The default transport is stdio, intended for a trusted local MCP host. Logs go to stderr. Build the widget before starting the server. The database defaults to `data/shadow-walker.sqlite`; set `SHADOW_WALKER_DB` to change it. Run from the repository root so the bundled UI can be found.
+The default transport is stdio, intended for a trusted local MCP host. Build the widget before starting the server. Configure a stdio host to launch `node dist/apps/server/src/index.js` directly from the repository root, rather than an npm wrapper that might print to stdout. Server logs go to stderr. The database defaults to `data/shadow-walker.sqlite`; set `SHADOW_WALKER_DB` to change it. Preserve that database across restarts.
 
 For a local MCP inspector using Streamable HTTP:
 
@@ -38,7 +42,7 @@ For a local MCP inspector using Streamable HTTP:
 npm start -- --http
 ```
 
-This binds **127.0.0.1 only**, at port 3001 (`PORT` overrides it). The endpoint is `/mcp`; `/healthz` reports local-only status. Host/Origin checks and a 1 MiB request limit are enabled. **Do not publish it or tunnel it to ChatGPT without authenticated remote transport.** OAuth, authenticated principal scoping, and deployment are deliberately outstanding.
+This binds **127.0.0.1 only**, at port 3001 (`PORT` overrides it). The endpoint is `/mcp`; `/healthz` reports local-only status. Host/Origin checks and a 1 MiB request limit are enabled. **Do not expose this unauthenticated listener through an arbitrary public tunnel.** Public deployment and user-scoped authorization are outstanding. For a private ChatGPT trial, current platform documentation also offers Secure MCP Tunnel; its credentials, access restrictions, and this application's UI behavior still need to be configured and verified. See [connection boundaries](docs/user-journey.md#first-private-chatgpt-trial-versus-public-hosting).
 
 For browser checks after building:
 
