@@ -16,6 +16,10 @@ SQLite is authoritative. Accepted positions are immutable; materialized state, a
 
 **Status:** the full typecheck, production build, 22 core tests, 4 SDK-over-HTTP tests, and 4 sandboxed browser tests passed in GitHub Actions on Node 24. The validated dependency audit reported zero vulnerabilities. A live ChatGPT session has **not** been validated. This is not a remotely deployable or security-certified release. See [verification](docs/verification.md), [architecture](docs/architecture.md), and [roadmap](docs/roadmap.md).
 
+## Bounded context
+
+New guided-walk packets include bounded ancestry/reserve previews and explicit omission metadata. Selected findings and the full persisted graph are retained. Drafts have an aggregate UTF-8 byte limit, and oversized preparation or review fails atomically. See [bounded-context policy and verification](docs/bounded-context.md) for limits, compatibility, and the 42-test core verification record.
+
 ## Run from the repository root
 
 Use Node 24 LTS (24.11 or later in the 24.x line).
