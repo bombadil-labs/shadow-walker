@@ -1,2 +1,0 @@
-Temporary non-secret fixture for testing file deletion through Github_MCP_-_Bombadil_Labs.
-This file should be deleted on the isolated test branch before the pull request is merged.
