@@ -1,6 +1,6 @@
 import type { MoveContext } from './context.ts';
 import { jsonByteLength, WALK_LIMITS } from './limits.ts';
-import type { CartographySnapshot, Line, SemanticShift } from './cartography.ts';
+import type { CartographySnapshot, Line, SemanticShift, Waypoint } from './cartography.ts';
 export type { CartographySnapshot, Encounter, Line, LineMembership, LineStatus, Observation, Operation, OperationApplication, RepresentationMeasurement, SemanticShift, ShiftSalience, ShiftSpan, StructuralConstraint, Transition, TransitionKind, Waypoint } from './cartography.ts';
 
 /** Domain code has no SDK, UI, database, or model dependency. */
@@ -40,6 +40,8 @@ export type MovePacket = {
   context?: MoveContext;
   /** New v0.2 moves are situated on an explicit line. */
   line?: Line;
+  /** Optional sensed route that this move is explicitly following. */
+  routeWaypoint?: Waypoint;
   frame: Frame; originalIntention: string; selectedInputs: Position[];
   orderedPaths: string[][]; reserves: Draft[]; priorRecordedWaypoint: Position;
   humanDirection: string; dependencyVersions: { exploration: number; frame: number };
