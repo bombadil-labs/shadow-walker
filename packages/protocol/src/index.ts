@@ -22,8 +22,10 @@ const draft=z.object({id,explorationId:id,moveId:id,version:z.number().int().pos
 const lineStatus=z.enum(['active','exploratory','intensifying','dormant','blocked','dissipated','transformed','reterritorialized']);
 const line=z.object({id,explorationId:id,label:text.max(200),status:lineStatus,originPositionId:id,createdAt:text}).strict();
 const membership=z.object({lineId:id,positionId:id,role:z.enum(['origin','arrival']),createdAt:text}).strict();
-const transitionKind=z.enum(['walked-to','excavated','branched','operation-applied','revealed-constraint','resonates','contradicts','weaves','converges','reterritorializes','transforms-question']);
+const transitionKind=z.enum(['walked-to','rewalked-to','excavated','branched','operation-applied','revealed-constraint','resonates','contradicts','weaves','converges','reterritorializes','transforms-question']);
 const transition=z.object({id,explorationId:id,fromPositionId:id,toPositionId:id,lineId:id.nullable(),kind:transitionKind,createdAt:text}).strict();
+const traversalContext=z.object({provenance:z.enum(['host-declared','human-declared','mixed','unspecified']),host:text.max(500).optional(),model:text.max(500).optional(),modelRevision:text.max(500).optional(),skillRevision:text.max(500).optional(),sessionLabel:text.max(500).optional(),notes:text.max(2000).optional()}).strict();
+const traversal=z.object({id,explorationId:id,moveId:id,lineId:id,mode:z.enum(['walk','rewalk']),selectedPositionIds:z.array(id).min(1).max(4),routeWaypointId:id.optional(),rewalkOfPositionId:id.optional(),context:traversalContext.optional(),createdAt:text}).strict();
 const directionProvenance=z.enum(['human-offered','walker-sensed','breakdown-emergent','operation-adjacent','resonance-detected']);
 const waypoint=z.object({id,explorationId:id,fromPositionId:id,question:text,provenance:directionProvenance,status:z.enum(['sensed','visited','dissipated']),visitedPositionId:id.optional(),resolvedAt:text.optional(),resolutionNote:text.optional(),createdAt:text}).strict();
 
@@ -37,10 +39,10 @@ const application=z.object({id,explorationId:id,operationId:id,lineId:id,targetC
 const encounterKind=z.enum(['correspondence','tension','mismatch','partial-overlap','convergence','none']);
 const encounter=z.object({id,explorationId:id,lineIds:z.array(id).min(2).max(8),basisPositionIds:z.array(id).min(2).max(16),kind:encounterKind,summary:text,uncertainty:z.array(text).min(1).max(16),epistemicStatus:z.literal('candidate'),createdAt:text}).strict();
 
-const cartography=z.object({lines:z.array(line),memberships:z.array(membership),transitions:z.array(transition),waypoints:z.array(waypoint),observations:z.array(observation),constraints:z.array(constraint),operations:z.array(operation),applications:z.array(application),encounters:z.array(encounter)}).strict();
+const cartography=z.object({lines:z.array(line),memberships:z.array(membership),transitions:z.array(transition),traversals:z.array(traversal),waypoints:z.array(waypoint),observations:z.array(observation),constraints:z.array(constraint),operations:z.array(operation),applications:z.array(application),encounters:z.array(encounter)}).strict();
 const nonnegative=z.number().int().nonnegative();
 const context=z.object({limits:z.object({maxOutputBytes:nonnegative,maxPacketBytes:nonnegative,maxPathsPerInput:nonnegative,maxPathDepth:nonnegative,maxAncestorVisitsPerInput:nonnegative,maxReservedDrafts:nonnegative}).strict(),paths:z.object({complete:z.boolean(),included:nonnegative,truncatedInputIds:z.array(id)}).strict(),reserves:z.object({total:nonnegative,included:nonnegative,omitted:nonnegative}).strict()}).strict();
-const packet=z.object({protocolVersion:z.enum(['0.1','0.2']),moveId:id,kind:z.literal('walk'),explorationId:id,line:line.optional(),routeWaypoint:waypoint.optional(),frame,originalIntention:text,context:context.optional(),selectedInputs:z.array(position),orderedPaths:z.array(z.array(id)),reserves:z.array(draft),priorRecordedWaypoint:position,humanDirection:text,dependencyVersions:z.object({exploration:z.number().int(),frame:z.number().int()}),budget:z.object({maxMoves:z.literal(1),maxPositions:z.literal(2)}),instructions:strings,outputContract:z.object({kinds:z.tuple([z.literal('excavation'),z.literal('question')]),localParentPrefix:z.literal('draft:'),requiresSemanticShift:z.literal(true).optional()}).strict()}).strict();
+const packet=z.object({protocolVersion:z.enum(['0.1','0.2']),moveId:id,kind:z.literal('walk'),explorationId:id,line:line.optional(),routeWaypoint:waypoint.optional(),traversal:traversal.optional(),frame,originalIntention:text,context:context.optional(),selectedInputs:z.array(position),orderedPaths:z.array(z.array(id)),reserves:z.array(draft),priorRecordedWaypoint:position,humanDirection:text,dependencyVersions:z.object({exploration:z.number().int(),frame:z.number().int()}),budget:z.object({maxMoves:z.literal(1),maxPositions:z.literal(2)}),instructions:strings,outputContract:z.object({kinds:z.tuple([z.literal('excavation'),z.literal('question')]),localParentPrefix:z.literal('draft:'),requiresSemanticShift:z.literal(true).optional()}).strict()}).strict();
 export const snapshot=z.object({exploration,positions:z.array(position),drafts:z.array(draft),activeMove:packet.nullable(),cartography}).strict();
 
 export const inputs={
@@ -55,7 +57,7 @@ export const inputs={
   operation:{explorationId:id,name:text.max(200),originDomain:text.max(500),inputStructure:text,outputStructure:text,preserves:z.array(text).min(1).max(16),transforms:z.array(text).min(1).max(16),procedure:z.array(text).min(1).max(32),constraintIds:z.array(id).min(1).max(16),requestId:id},
   application:{explorationId:id,operationId:id,lineId:id,targetConstraintIds:z.array(id).min(1).max(16),adaptation:text,protocol:z.array(text).min(1).max(32),outcome:applicationOutcome,observationIds:z.array(id).max(16),revealedConstraintIds:z.array(id).max(16),requestId:id},
   encounter:{explorationId:id,lineIds:z.array(id).min(2).max(8),basisPositionIds:z.array(id).min(2).max(16),kind:encounterKind,summary:text,uncertainty:z.array(text).min(1).max(16),requestId:id},
-  prepare:{explorationId:id,selectedIds:z.array(id).min(1).max(4),humanDirection:text,lineId:id.optional(),waypointId:id.optional(),requestId:id},
+  prepare:{explorationId:id,selectedIds:z.array(id).min(1).max(4),humanDirection:text,lineId:id.optional(),waypointId:id.optional(),rewalkOfPositionId:id.optional(),traversalContext:traversalContext.optional(),requestId:id},
   submit:{moveId:id,output,requestId:id},
   review:{draftId:id,expectedVersion:z.number().int().positive(),token:id,requestId:id,action:z.enum(['land','revise','reserve','discard']),output:output.optional()}
 };

@@ -8,6 +8,7 @@
     "tests/cartography.test.ts",
     "tests/flight-lines.test.ts",
     "tests/waypoints.test.ts",
+    "tests/traversals.test.ts",
     "tests/fixtures.ts"
   ]
 }

@@ -5,7 +5,7 @@ description: Navigate and persist situated latent-space cartography by synthesiz
 
 # Shadow Walker
 
-Shadow Walker is a persistent cartographic workbench, not another model. You perform the reasoning in the conversation. The server preserves path-dependent Arrivals, Lines, transitions, persistent Waypoints, semantic shifts, external observations, candidate constraints, executable operations/applications, encounters, grounding, uncertainty, and human review so territory created in one encounter can become terrain for another.
+Shadow Walker is a persistent cartographic workbench, not another model. You perform the reasoning in the conversation. The server preserves path-dependent Arrivals, Lines, transitions, persistent Waypoints, situated Traversals, semantic shifts, external observations, candidate constraints, executable operations/applications, encounters, grounding, uncertainty, and human review so territory created in one encounter can become terrain for another.
 
 The canonical orientation is `docs/cartography-synthesis.md`.
 
@@ -27,11 +27,20 @@ The canonical orientation is `docs/cartography-synthesis.md`.
 ## Waypoint discipline
 
 - A **Waypoint** is sensed possibility, not visited territory and not a prediction that an answer exists there.
-- Accepted new Arrivals automatically expose their saved `nextQuestion` as a `walker-sensed` Waypoint so paths not taken persist beyond the chat turn.
+- Accepted new terminal Arrivals automatically expose their saved `nextQuestion` as a `walker-sensed` Waypoint so paths not taken persist beyond the chat turn.
 - Use waypoint provenance honestly: `human-offered`, `walker-sensed`, `breakdown-emergent`, `operation-adjacent`, or `resonance-detected` describes how a route became visible, not why it is correct.
 - `record_waypoint` can preserve an additional live route without walking it. Do not spray the graph with speculative futures; persist routes that matter to the actual inquiry.
 - Use `dissipate_waypoint` only when the human explicitly wants a sensed route removed from the live frontier. Dissipation keeps it as historical negative space. Do not silently resurrect a dissipated route; a later human can articulate a new Waypoint if it becomes relevant again.
 - Following a Waypoint with `prepare_move` does not mark it visited. Only a reviewed, landed Arrival can do that.
+
+## Traversal and re-walk discipline
+
+- Every newly prepared v0.2 move is a **Traversal**: a durable record of which Line and visited Arrivals were selected, which persisted Waypoint was followed, and, when supplied, declared host/model/skill/session context.
+- `traversalContext` is contextual provenance only. Host/model labels may be incomplete, mutable, or human-supplied; never claim they reproduce an internal model state.
+- Use `rewalkOfPositionId` only when the human explicitly wants to revisit already visited territory under current conditions. The target must be one of the selected Arrivals.
+- A re-walk never mutates or replaces the historical Arrival. It creates a new Traversal and, if the human keeps the resulting draft, a distinct Arrival connected by `rewalked-to`.
+- Compare a re-walk against the historical Arrival: what is newly salient now, what still holds, and what no longer organizes the territory. Difference is cartographic evidence of changed conditions, not proof about why the model changed.
+- Re-walking is not replay. The conversation, model service, human, culture, tools, and accumulated exploration may all have changed.
 
 ## Flight Lines gestures
 

@@ -1,12 +1,12 @@
 export const MIGRATIONS = [
   `CREATE TABLE explorations (id TEXT PRIMARY KEY, body TEXT NOT NULL) STRICT;
    CREATE TABLE positions (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), body TEXT NOT NULL) STRICT;
+   CREATE TABLE drafts (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), move_id TEXT NOT NULL, body TEXT NOT NULL) STRICT;
    CREATE TABLE moves (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), status TEXT NOT NULL, body TEXT NOT NULL) STRICT;
-   CREATE UNIQUE INDEX one_live_move ON moves(exploration_id) WHERE status IN ('prepared','submitted');
-   CREATE TABLE drafts (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), move_id TEXT NOT NULL UNIQUE REFERENCES moves(id), body TEXT NOT NULL) STRICT;
-   CREATE TABLE capabilities (hash TEXT PRIMARY KEY, draft_id TEXT NOT NULL REFERENCES drafts(id), version INTEGER NOT NULL, expires INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0) STRICT;
-   CREATE TABLE receipts (scope TEXT NOT NULL, key TEXT NOT NULL, hash TEXT NOT NULL, body TEXT NOT NULL, PRIMARY KEY(scope,key)) STRICT;
+   CREATE UNIQUE INDEX one_active_move ON moves(exploration_id) WHERE status IN ('prepared','submitted');
    CREATE TABLE events (seq INTEGER PRIMARY KEY AUTOINCREMENT, exploration_id TEXT NOT NULL REFERENCES explorations(id), kind TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL) STRICT;
+   CREATE TABLE receipts (scope TEXT NOT NULL, key TEXT NOT NULL, hash TEXT NOT NULL, body TEXT NOT NULL, PRIMARY KEY(scope,key)) STRICT;
+   CREATE TABLE capabilities (hash TEXT PRIMARY KEY, draft_id TEXT NOT NULL REFERENCES drafts(id), version INTEGER NOT NULL, expires INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0) STRICT;
    CREATE TRIGGER events_no_update BEFORE UPDATE ON events BEGIN SELECT RAISE(ABORT,'Ledger is append-only'); END;
    CREATE TRIGGER events_no_delete BEFORE DELETE ON events BEGIN SELECT RAISE(ABORT,'Ledger is append-only'); END;
    CREATE TRIGGER positions_no_update BEFORE UPDATE ON positions BEGIN SELECT RAISE(ABORT,'Positions are immutable'); END;
@@ -27,11 +27,6 @@ export const MIGRATIONS = [
    CREATE TABLE operation_applications (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), operation_id TEXT NOT NULL REFERENCES operations(id), line_id TEXT NOT NULL REFERENCES lines(id), body TEXT NOT NULL) STRICT;
    CREATE TABLE encounters (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), body TEXT NOT NULL) STRICT;
    CREATE TABLE encounter_lines (encounter_id TEXT NOT NULL REFERENCES encounters(id), line_id TEXT NOT NULL REFERENCES lines(id), PRIMARY KEY(encounter_id,line_id)) STRICT;
-   CREATE INDEX observations_exploration ON observations(exploration_id);
-   CREATE INDEX constraints_exploration ON structural_constraints(exploration_id);
-   CREATE INDEX operations_exploration ON operations(exploration_id);
-   CREATE INDEX applications_exploration ON operation_applications(exploration_id);
-   CREATE INDEX encounters_exploration ON encounters(exploration_id);
    CREATE TRIGGER observations_no_update BEFORE UPDATE ON observations BEGIN SELECT RAISE(ABORT,'Observations are historical'); END;
    CREATE TRIGGER observations_no_delete BEFORE DELETE ON observations BEGIN SELECT RAISE(ABORT,'Observations are historical'); END;
    CREATE TRIGGER structural_constraints_no_update BEFORE UPDATE ON structural_constraints BEGIN SELECT RAISE(ABORT,'Constraints are historical'); END;
@@ -47,5 +42,10 @@ export const MIGRATIONS = [
   `CREATE TABLE waypoints (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), from_position_id TEXT NOT NULL REFERENCES positions(id), status TEXT NOT NULL, body TEXT NOT NULL) STRICT;
    CREATE INDEX waypoints_exploration ON waypoints(exploration_id);
    CREATE INDEX waypoints_origin ON waypoints(from_position_id);
-   CREATE TRIGGER waypoints_no_delete BEFORE DELETE ON waypoints BEGIN SELECT RAISE(ABORT,'Waypoints are historical'); END;`
+   CREATE TRIGGER waypoints_no_delete BEFORE DELETE ON waypoints BEGIN SELECT RAISE(ABORT,'Waypoints are historical'); END;`,
+  `CREATE TABLE traversals (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), move_id TEXT NOT NULL UNIQUE REFERENCES moves(id), line_id TEXT NOT NULL REFERENCES lines(id), rewalk_of_position_id TEXT REFERENCES positions(id), body TEXT NOT NULL) STRICT;
+   CREATE INDEX traversals_exploration ON traversals(exploration_id);
+   CREATE INDEX traversals_rewalk_target ON traversals(rewalk_of_position_id);
+   CREATE TRIGGER traversals_no_update BEFORE UPDATE ON traversals BEGIN SELECT RAISE(ABORT,'Traversals are historical'); END;
+   CREATE TRIGGER traversals_no_delete BEFORE DELETE ON traversals BEGIN SELECT RAISE(ABORT,'Traversals are historical'); END;`
 ];

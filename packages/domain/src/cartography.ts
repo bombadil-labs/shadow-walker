@@ -49,6 +49,7 @@ export type LineMembership = { lineId: string; positionId: string; role: 'origin
 
 export type TransitionKind =
   | 'walked-to'
+  | 'rewalked-to'
   | 'excavated'
   | 'branched'
   | 'operation-applied'
@@ -66,6 +67,29 @@ export type Transition = {
   toPositionId: string;
   lineId: string | null;
   kind: TransitionKind;
+  createdAt: string;
+};
+
+export type TraversalContext = {
+  /** These labels are declared context, not a reproducibility or identity guarantee. */
+  provenance: 'host-declared' | 'human-declared' | 'mixed' | 'unspecified';
+  host?: string;
+  model?: string;
+  modelRevision?: string;
+  skillRevision?: string;
+  sessionLabel?: string;
+  notes?: string;
+};
+export type Traversal = {
+  id: string;
+  explorationId: string;
+  moveId: string;
+  lineId: string;
+  mode: 'walk' | 'rewalk';
+  selectedPositionIds: string[];
+  routeWaypointId?: string;
+  rewalkOfPositionId?: string;
+  context?: TraversalContext;
   createdAt: string;
 };
 
@@ -155,6 +179,7 @@ export type CartographySnapshot = {
   lines: Line[];
   memberships: LineMembership[];
   transitions: Transition[];
+  traversals: Traversal[];
   waypoints: Waypoint[];
   observations: Observation[];
   constraints: StructuralConstraint[];
