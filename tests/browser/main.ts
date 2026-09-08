@@ -1,7 +1,7 @@
 import { AppBridge, PostMessageTransport } from '@modelcontextprotocol/ext-apps/app-bridge';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
-const suffix=new URLSearchParams(location.search).has('noMeta')?'?noMeta=1':'';
+const params=new URLSearchParams(location.search);const flags=new URLSearchParams();if(params.has('noMeta'))flags.set('noMeta','1');if(params.has('flightLines'))flags.set('flightLines','1');const suffix=flags.size?`?${flags}`:'';
 const initial=await fetch(`/initial${suffix}`).then(r=>r.json()) as CallToolResult;
 const snapshot=initial.structuredContent!.snapshot as {exploration:{id:string}};
 document.body.dataset.explorationId=snapshot.exploration.id;

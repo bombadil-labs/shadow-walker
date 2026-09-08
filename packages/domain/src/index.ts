@@ -1,7 +1,7 @@
 import type { MoveContext } from './context.ts';
 import { jsonByteLength, WALK_LIMITS } from './limits.ts';
 import type { CartographySnapshot, Line, SemanticShift } from './cartography.ts';
-export type { CartographySnapshot, Encounter, Line, LineMembership, LineStatus, Operation, OperationApplication, RepresentationMeasurement, SemanticShift, ShiftSalience, ShiftSpan, StructuralConstraint, Transition, TransitionKind, Waypoint } from './cartography.ts';
+export type { CartographySnapshot, Encounter, Line, LineMembership, LineStatus, Observation, Operation, OperationApplication, RepresentationMeasurement, SemanticShift, ShiftSalience, ShiftSpan, StructuralConstraint, Transition, TransitionKind, Waypoint } from './cartography.ts';
 
 /** Domain code has no SDK, UI, database, or model dependency. */
 export type Anchor = { id: string; detail: string; source?: string };

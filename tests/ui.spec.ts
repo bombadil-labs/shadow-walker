@@ -42,3 +42,16 @@ test('map exposes semantic-shift hover/focus copy and an unvisited hollow direct
   await expect(view.getByText('mismatch',{exact:true}).first()).toBeVisible();
   await expect(view.getByText('Hollow nodes are sensed, not visited.',{exact:false})).toBeVisible();
 });
+
+test('Flight Lines structural ecology is visible as map features rather than raw records',async({page})=>{
+  await page.goto('/?flightLines=1');const view=page.frameLocator('#view');
+  const observation=view.getByRole('button',{name:/Grounded observation: A real deployment constraint surfaced/});
+  const constraint=view.getByRole('button',{name:/Structural pressure: External authority arrives asynchronously/});
+  const operation=view.getByRole('button',{name:/Operation: Selective boundary protocol/});
+  const application=view.getByRole('button',{name:/Operation in motion: Treat external reconciliation/});
+  const encounter=view.getByRole('button',{name:/Encounter \/ weave: The two lines disagree/});
+  await expect(observation).toBeVisible();await expect(constraint).toBeVisible();await expect(operation).toBeVisible();await expect(application).toBeVisible();await expect(encounter).toBeVisible();
+  await constraint.click();await expect(view.getByRole('heading',{name:'External authority arrives asynchronously'})).toBeVisible();await expect(view.getByText('Fixture human report')).toBeVisible();
+  await operation.click();await expect(view.getByText('Cell membranes / message-passing systems')).toBeVisible();await expect(view.getByRole('heading',{name:'Executable procedure'})).toBeVisible();
+  await encounter.click();await expect(view.getByText('ENCOUNTER / WEAVE · mismatch')).toBeVisible();await expect(view.getByText('Resonance proposes; it does not prove.')).toBeVisible();
+});

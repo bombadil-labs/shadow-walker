@@ -1,0 +1,89 @@
+import { useMemo } from 'react';
+import type {
+  Encounter, Observation, Operation, OperationApplication, Position, Proposal, SemanticShift, Snapshot, StructuralConstraint,
+} from '../../../packages/domain/src/index.ts';
+
+const short=(value:string,max=72)=>value.length<=max?value:`${value.slice(0,max-1).trimEnd()}…`;
+
+export type VisualNode={
+  id:string;type:'arrival'|'draft'|'waypoint';label:string;parentIds:string[];position?:Position;proposal?:Proposal;
+  draftId?:string;draftStatus?:'pending'|'reserved'|'landed'|'discarded';question?:string;shift?:SemanticShift;index:number;
+};
+type Point={x:number;y:number;depth:number};
+type VisualFeature=
+  | {id:string;kind:'observation';label:string;anchorIds:string[];observation:Observation}
+  | {id:string;kind:'constraint';label:string;anchorIds:string[];constraint:StructuralConstraint}
+  | {id:string;kind:'operation';label:string;anchorIds:string[];operation:Operation}
+  | {id:string;kind:'application';label:string;anchorIds:string[];application:OperationApplication}
+  | {id:string;kind:'encounter';label:string;anchorIds:string[];encounter:Encounter};
+
+export function mapNodes(snapshot:Snapshot):VisualNode[]{
+  const nodes:VisualNode[]=snapshot.positions.map((position,index)=>({id:position.id,type:'arrival',label:position.kind==='intention'?snapshot.exploration.title:short(position.meaning),parentIds:position.parentIds,position,shift:position.semanticShift,index}));
+  let index=nodes.length;
+  for(const draft of snapshot.drafts.filter(d=>d.status==='pending'||d.status==='reserved')){
+    const local=new Map(draft.output.positions.map(p=>[`draft:${p.localId}`,`proposal:${draft.id}:${p.localId}`]));
+    for(const p of draft.output.positions)nodes.push({id:`proposal:${draft.id}:${p.localId}`,type:'draft',label:short(p.meaning),parentIds:p.parentIds.map(id=>local.get(id)??id),proposal:p,shift:p.semanticShift,draftId:draft.id,draftStatus:draft.status,index:index++});
+  }
+  for(const position of snapshot.positions){
+    const hasChild=nodes.some(n=>n.parentIds.includes(position.id));
+    if(!hasChild&&position.nextQuestion)nodes.push({id:`waypoint:${position.id}`,type:'waypoint',label:short(position.nextQuestion),parentIds:[position.id],question:position.nextQuestion,index:index++});
+  }
+  return nodes;
+}
+function layout(nodes:VisualNode[]):{points:Map<string,Point>;height:number}{
+  const byId=new Map(nodes.map(n=>[n.id,n]));const memo=new Map<string,number>();
+  const depth=(id:string,seen=new Set<string>()):number=>{if(memo.has(id))return memo.get(id)!;if(seen.has(id))return 0;seen.add(id);const node=byId.get(id);if(!node||!node.parentIds.length){memo.set(id,0);return 0;}const d=1+Math.max(0,...node.parentIds.map(parent=>depth(parent,new Set(seen))));memo.set(id,d);return d;};
+  const groups=new Map<number,VisualNode[]>();for(const node of nodes){const d=depth(node.id);const group=groups.get(d)??[];group.push(node);groups.set(d,group);}
+  const maxDepth=Math.max(0,...groups.keys());const height=Math.max(560,180+maxDepth*160);const points=new Map<string,Point>();
+  for(const [d,group] of groups){group.sort((a,b)=>a.index-b.index);const usable=760,start=120,gap=group.length===1?0:usable/(group.length-1);group.forEach((node,i)=>points.set(node.id,{x:group.length===1?500:start+i*gap,y:height-90-d*150,depth:d}));}
+  return {points,height};
+}
+function latestPositionOnLine(snapshot:Snapshot,lineId:string):string|undefined{
+  const order=new Map(snapshot.positions.map((p,i)=>[p.id,i]));
+  return snapshot.cartography.memberships.filter(m=>m.lineId===lineId&&order.has(m.positionId)).sort((a,b)=>(order.get(b.positionId)??0)-(order.get(a.positionId)??0))[0]?.positionId;
+}
+function mapFeatures(snapshot:Snapshot):VisualFeature[]{
+  const constraints=new Map(snapshot.cartography.constraints.map(c=>[c.id,c]));
+  const features:VisualFeature[]=[];
+  for(const observation of snapshot.cartography.observations)if(observation.positionId)features.push({id:`feature:observation:${observation.id}`,kind:'observation',label:short(observation.detail,46),anchorIds:[observation.positionId],observation});
+  for(const constraint of snapshot.cartography.constraints)features.push({id:`feature:constraint:${constraint.id}`,kind:'constraint',label:short(constraint.label,46),anchorIds:[constraint.discoveredAtPositionId],constraint});
+  for(const operation of snapshot.cartography.operations){const anchorIds=[...new Set(operation.constraintIds.map(id=>constraints.get(id)?.discoveredAtPositionId).filter((id):id is string=>!!id))];features.push({id:`feature:operation:${operation.id}`,kind:'operation',label:short(operation.name,46),anchorIds,operation});}
+  for(const application of snapshot.cartography.applications){const anchor=latestPositionOnLine(snapshot,application.lineId);features.push({id:`feature:application:${application.id}`,kind:'application',label:short(application.adaptation,46),anchorIds:anchor?[anchor]:[],application});}
+  for(const encounter of snapshot.cartography.encounters)features.push({id:`feature:encounter:${encounter.id}`,kind:'encounter',label:short(encounter.summary,46),anchorIds:encounter.basisPositionIds,encounter});
+  return features;
+}
+function averagePoint(ids:string[],points:Map<string,Point>):Point|undefined{const found=ids.map(id=>points.get(id)).filter((p):p is Point=>!!p);if(!found.length)return;return {x:found.reduce((n,p)=>n+p.x,0)/found.length,y:found.reduce((n,p)=>n+p.y,0)/found.length,depth:0};}
+function featurePoint(feature:VisualFeature,points:Map<string,Point>,index:number):Point|undefined{
+  const base=averagePoint(feature.anchorIds,points);if(!base)return;
+  const offsets:Record<VisualFeature['kind'],[number,number]>={observation:[-68,8],constraint:[68,8],operation:[96,-52],application:[-96,-52],encounter:[0,-38]};
+  const [dx,dy]=offsets[feature.kind];const fan=((index%3)-1)*16;return {x:base.x+dx+fan,y:base.y+dy,depth:0};
+}
+export function ShiftChips({shift,empty='Shift was not recorded for this earlier arrival.'}:{shift?:SemanticShift;empty?:string}){if(!shift)return <p className="muted compact">{empty}</p>;return <><div className="shift-row"><span className="micro">What entered</span><div className="chips">{shift.newlySalient.length?shift.newlySalient.map((s,i)=><span className="chip" key={`${s.span}-${i}`}>{s.span}</span>):<span className="muted">No new spans recorded</span>}</div></div>{shift.preservedInvariants.length>0&&<div className="shift-row"><span className="micro">Still holding</span><div className="chips">{shift.preservedInvariants.map((s,i)=><span className="chip invariant" key={`${s}-${i}`}>{s}</span>)}</div></div>}</>}
+
+const featureGlyph:Record<VisualFeature['kind'],string>={observation:'✦',constraint:'△',operation:'⚙',application:'↯',encounter:'◎'};
+const featureNoun:Record<VisualFeature['kind'],string>={observation:'Grounded observation',constraint:'Structural pressure',operation:'Operation',application:'Operation in motion',encounter:'Encounter / weave'};
+
+export function CartographyMap({snapshot,selected,onSelect}:{snapshot:Snapshot;selected?:string;onSelect:(id:string)=>void}){
+  const nodes=useMemo(()=>mapNodes(snapshot),[snapshot]);const features=useMemo(()=>mapFeatures(snapshot),[snapshot]);const {points,height}=useMemo(()=>layout(nodes),[nodes]);
+  return <div className="map-scroll" role="region" aria-label="Exploration map" tabIndex={0}><div className="map-plane" style={{height}}>
+    <svg className="map-edges" viewBox={`0 0 1000 ${height}`} aria-hidden="true">
+      {nodes.flatMap(node=>node.parentIds.map(parent=>{const a=points.get(parent),b=points.get(node.id);if(!a||!b)return null;const mid=(a.y+b.y)/2;return <path key={`${parent}->${node.id}`} className={`edge ${node.type==='draft'?'proposed':node.type==='waypoint'?'sensed':''}`} d={`M ${a.x} ${a.y} C ${a.x} ${mid}, ${b.x} ${mid}, ${b.x} ${b.y}`}/>;}))}
+      {features.flatMap((feature,index)=>{const fp=featurePoint(feature,points,index);if(!fp)return[];return feature.anchorIds.map(anchor=>{const ap=points.get(anchor);if(!ap)return null;return <path key={`${feature.id}:${anchor}`} className={`feature-tether ${feature.kind}`} d={`M ${ap.x} ${ap.y} Q ${(ap.x+fp.x)/2} ${(ap.y+fp.y)/2-18} ${fp.x} ${fp.y}`}/>;});})}
+      {features.filter((f):f is Extract<VisualFeature,{kind:'encounter'}>=>f.kind==='encounter').map(feature=>{const [aId,bId]=feature.anchorIds;const a=points.get(aId??''),b=points.get(bId??'');if(!a||!b)return null;return <path key={`encounter-edge:${feature.id}`} className={`encounter-edge ${feature.encounter.kind}`} d={`M ${a.x} ${a.y} C ${(a.x+b.x)/2} ${a.y-90}, ${(a.x+b.x)/2} ${b.y-90}, ${b.x} ${b.y}`}/>;})}
+    </svg>
+    {nodes.map(node=>{const p=points.get(node.id)!;const root=node.position?.kind==='intention';return <button key={node.id} type="button" className={`map-node ${node.type} ${root?'root':''} ${selected===node.id?'selected':''}`} style={{left:p.x,top:p.y}} onClick={()=>onSelect(node.id)} aria-label={`${node.type==='waypoint'?'Unvisited direction':node.type==='draft'?'Proposed arrival':'Visited arrival'}: ${node.label}`}><span className="node-glyph" aria-hidden="true">{node.type==='waypoint'?'◇':node.type==='draft'?'◌':root?'◆':'●'}</span><span className="node-label">{node.label}</span><span className="node-tooltip"><strong>{node.type==='waypoint'?'Possible direction':node.type==='draft'?'Proposed arrival':'Arrival'}</strong>{node.type!=='waypoint'?<ShiftChips shift={node.shift}/>:<span>{node.question}</span>}</span></button>;})}
+    {features.map((feature,index)=>{const p=featurePoint(feature,points,index);if(!p)return null;const outcome=feature.kind==='application'?feature.application.outcome:feature.kind==='encounter'?feature.encounter.kind:'';return <button key={feature.id} type="button" className={`map-feature ${feature.kind} ${outcome} ${selected===feature.id?'selected':''}`} style={{left:p.x,top:p.y}} onClick={()=>onSelect(feature.id)} aria-label={`${featureNoun[feature.kind]}: ${feature.label}`}><span aria-hidden="true">{feature.kind==='application'&&feature.application.outcome==='broke-down'?'×':feature.kind==='encounter'&&feature.encounter.kind==='none'?'∅':featureGlyph[feature.kind]}</span><span className="feature-tooltip"><strong>{featureNoun[feature.kind]}</strong>{feature.label}</span></button>;})}
+  </div></div>;
+}
+
+function ObservationDetail({observation}:{observation:Observation}){return <><p className="eyebrow">GROUNDED OBSERVATION</p><h2>{observation.detail}</h2><p className="candidate-note">This entered from outside pure model generation.</p><div className="detail-block"><h3>Provenance</h3><p>{observation.kind} · {observation.source}</p>{observation.observedAt&&<p>Observed {observation.observedAt}</p>}</div></>}
+function ConstraintDetail({snapshot,constraint}:{snapshot:Snapshot;constraint:StructuralConstraint}){const evidence=snapshot.cartography.observations.filter(o=>constraint.observationIds.includes(o.id));return <><p className="eyebrow">STRUCTURAL PRESSURE · CANDIDATE</p><h2>{constraint.label}</h2><p>{constraint.description}</p><div className="detail-block"><h3>How it appeared</h3><p>{constraint.provenance}</p></div>{evidence.length>0&&<div className="detail-block"><h3>Grounding</h3>{evidence.map(o=><p key={o.id}>{o.detail}<small>{o.source}</small></p>)}</div>}</>}
+function OperationDetail({snapshot,operation}:{snapshot:Snapshot;operation:Operation}){const constraints=snapshot.cartography.constraints.filter(c=>operation.constraintIds.includes(c.id));return <><p className="eyebrow">OPERATION · CANDIDATE</p><h2>{operation.name}</h2><p><strong>Borrowed from:</strong> {operation.originDomain}</p><div className="operation-flow"><span>{operation.inputStructure}</span><b aria-hidden="true">→</b><span>{operation.outputStructure}</span></div><div className="detail-block"><h3>What it preserves</h3><ul>{operation.preserves.map(v=><li key={v}>{v}</li>)}</ul><h3>What it transforms</h3><ul>{operation.transforms.map(v=><li key={v}>{v}</li>)}</ul></div><div className="detail-block"><h3>Executable procedure</h3><ol>{operation.procedure.map((v,i)=><li key={i}>{v}</li>)}</ol></div>{constraints.length>0&&<div className="detail-block"><h3>Structural fit</h3>{constraints.map(c=><p key={c.id}>{c.label}</p>)}</div>}</>}
+function ApplicationDetail({snapshot,application}:{snapshot:Snapshot;application:OperationApplication}){const operation=snapshot.cartography.operations.find(o=>o.id===application.operationId);const evidence=snapshot.cartography.observations.filter(o=>application.observationIds.includes(o.id));const revealed=snapshot.cartography.constraints.filter(c=>application.revealedConstraintIds.includes(c.id));return <><p className="eyebrow">{application.outcome==='broke-down'?'PRODUCTIVE BREAKDOWN':'OPERATION IN MOTION'} · {application.outcome}</p><h2>{operation?.name??'Recorded operation application'}</h2><p>{application.adaptation}</p><div className="detail-block"><h3>Protocol</h3><ol>{application.protocol.map((v,i)=><li key={i}>{v}</li>)}</ol></div>{evidence.length>0&&<div className="detail-block"><h3>What happened outside the model</h3>{evidence.map(o=><p key={o.id}>{o.detail}<small>{o.source}</small></p>)}</div>}{revealed.length>0&&<div className="detail-block"><h3>What the friction exposed</h3>{revealed.map(c=><p key={c.id}><strong>{c.label}</strong><br/>{c.description}</p>)}</div>}</>}
+function EncounterDetail({snapshot,encounter}:{snapshot:Snapshot;encounter:Encounter}){const lines=snapshot.cartography.lines.filter(l=>encounter.lineIds.includes(l.id));return <><p className="eyebrow">ENCOUNTER / WEAVE · {encounter.kind}</p><h2>{encounter.summary}</h2><div className="chips">{lines.map(l=><span className="chip" key={l.id}>{l.label}</span>)}</div>{encounter.kind==='none'&&<p className="candidate-note">No useful correspondence was found. That is a cartographic result, not a gap the model must repair.</p>}<div className="detail-block"><h3>What remains unresolved</h3><ul>{encounter.uncertainty.map((u,i)=><li key={i}>{u}</li>)}</ul></div><p className="muted">Candidate relation. Resonance proposes; it does not prove.</p></>}
+
+export function MapDetail({snapshot,selected}:{snapshot:Snapshot;selected?:string}){
+  const node=mapNodes(snapshot).find(n=>n.id===selected);if(node){if(node.type==='waypoint')return <section className="detail-card"><p className="eyebrow">UNVISITED DIRECTION</p><h2>{node.question}</h2><p>This route is visible from the current territory, but it has not been walked. It is not an accepted finding.</p></section>;const source=node.position??node.proposal!;const shift=node.shift;const missing=node.position?.kind==='intention'?'The root intention is the starting place; it has no prior semantic shift.':'This arrival predates semantic-shift recording. Shadow Walker will not invent a historical shift after the fact.';const nearbyObs=snapshot.cartography.observations.filter(o=>o.positionId===node.position?.id);const nearbyConstraints=snapshot.cartography.constraints.filter(c=>c.discoveredAtPositionId===node.position?.id);return <section className="detail-card"><p className="eyebrow">{node.type==='draft'?(node.draftStatus==='reserved'?'SAVED FOR LATER':'PROPOSED STEP'):'VISITED ARRIVAL'}</p><h2>{source.meaning}</h2>{shift?<><p className="shift-summary">{shift.summary}</p><ShiftChips shift={shift}/>{shift.receded.length>0&&<div className="detail-block"><h3>What receded</h3><p>{shift.receded.map(s=>s.span).join(' · ')}</p></div>}<div className="detail-block"><h3>Surprise</h3><p><strong>{shift.surprise.level}</strong> · {shift.surprise.notes}</p></div>{shift.unexpectedConnections.length>0&&<div className="detail-block"><h3>Unexpected connections</h3><ul>{shift.unexpectedConnections.map((v,i)=><li key={i}>{v}</li>)}</ul></div>}</>:<p className="legacy-note">{missing}</p>}{source.anchors.length>0&&<div className="detail-block"><h3>Grounding</h3>{source.anchors.map(a=><p key={a.id}>{a.detail}{a.source&&<small>{a.source}</small>}</p>)}</div>}{(nearbyObs.length>0||nearbyConstraints.length>0)&&<div className="detail-block"><h3>Ecology around this arrival</h3>{nearbyConstraints.map(c=><p key={c.id}><strong>{c.label}</strong> · structural pressure</p>)}{nearbyObs.map(o=><p key={o.id}>{o.detail}<small>{o.source}</small></p>)}</div>}{source.uncertainty.length>0&&<div className="detail-block"><h3>What we're unsure about</h3><ul>{source.uncertainty.map((u,i)=><li key={i}>{u}</li>)}</ul></div>}<div className="next"><span className="micro">Where this leads</span><p>{source.nextQuestion}</p></div><details><summary>Patterns &amp; developer details</summary>{source.structuralViews.map((v,i)=><div className="structure" key={i}><h3>{v.label}</h3><p>{v.relationships.join('; ')}</p><p><strong>Applies:</strong> {v.applicability}</p><p><strong>Mismatches:</strong> {v.mismatches.join('; ')||'None recorded'}</p></div>)}{node.position&&<><code>{node.position.id}</code><p>Parents: {node.position.parentIds.join(', ')||'Root intention'}</p></>}</details></section>}
+  const feature=mapFeatures(snapshot).find(f=>f.id===selected);if(!feature)return <section className="detail-card empty-detail"><p className="eyebrow">MAP READING</p><h2>Select a place or relation</h2><p>Choose an arrival, structural pressure, grounded observation, operation, application, encounter, or open direction. The map keeps schema details behind the territory.</p></section>;
+  return <section className={`detail-card feature-detail ${feature.kind}`}>{feature.kind==='observation'?<ObservationDetail observation={feature.observation}/>:feature.kind==='constraint'?<ConstraintDetail snapshot={snapshot} constraint={feature.constraint}/>:feature.kind==='operation'?<OperationDetail snapshot={snapshot} operation={feature.operation}/>:feature.kind==='application'?<ApplicationDetail snapshot={snapshot} application={feature.application}/>:<EncounterDetail snapshot={snapshot} encounter={feature.encounter}/>}</section>;
+}
