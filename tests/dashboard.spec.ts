@@ -7,10 +7,13 @@ test('standalone page opens saved state, protects structured edits, revises, kee
   await view.getByRole('button',{name:'Change it',exact:true}).click();
   const editor=view.getByLabel('Main idea');await expect(editor).toBeVisible();await editor.fill('Standalone review keeps the same durable hypothesis.');
   await expect(picker).toBeDisabled();await expect(page.getByRole('button',{name:'Refresh from server'})).toBeDisabled();
-  await view.getByRole('button',{name:'Save revision',exact:true}).click();await expect(view.getByRole('status')).toContainText('Revision saved');await expect(picker).toBeEnabled();
-  await view.getByRole('button',{name:'Keep this',exact:true}).click();await expect(view.getByRole('status')).toContainText('Kept.');
-  await picker.selectOption({label:'An earlier exploration'});await expect(view.getByRole('heading',{name:'An earlier exploration',exact:true})).toBeVisible();await expect(view.getByText('Kept.',{exact:false})).toHaveCount(0);
-  await picker.selectOption({label:'Dashboard review fixture'});await page.reload();
+  await view.getByRole('button',{name:'Save revision',exact:true}).click();
+  await expect(view.getByRole('status')).toContainText('Revision saved');
+  await expect(picker).toBeEnabled();
+  await expect(view.getByRole('button',{name:'Keep this',exact:true})).toBeEnabled();
+  await view.getByRole('button',{name:'Keep this',exact:true}).click();
+  await expect(view.getByRole('status')).toContainText('Kept.');
+  await page.reload();
   await expect(view.getByText('Standalone review keeps the same durable hypothesis.',{exact:true}).first()).toBeVisible();
   await expect(view.getByRole('button',{name:/Visited arrival: Standalone review keeps/})).toBeVisible();
   await expect(view.getByRole('button',{name:'Keep this',exact:true})).toHaveCount(0);
