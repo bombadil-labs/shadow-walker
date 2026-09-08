@@ -1,7 +1,7 @@
 import type { MoveContext } from './context.ts';
 import { jsonByteLength, WALK_LIMITS } from './limits.ts';
-import type { CartographySnapshot, Line, SemanticShift, Waypoint } from './cartography.ts';
-export type { CartographySnapshot, Encounter, Line, LineMembership, LineStatus, Observation, Operation, OperationApplication, RepresentationMeasurement, SemanticShift, ShiftSalience, ShiftSpan, StructuralConstraint, Transition, TransitionKind, Waypoint } from './cartography.ts';
+import type { CartographySnapshot, Line, SemanticShift, Traversal, Waypoint } from './cartography.ts';
+export type { CartographySnapshot, Encounter, Line, LineMembership, LineStatus, Observation, Operation, OperationApplication, RepresentationMeasurement, SemanticShift, ShiftSalience, ShiftSpan, StructuralConstraint, Transition, TransitionKind, Traversal, TraversalContext, Waypoint } from './cartography.ts';
 
 /** Domain code has no SDK, UI, database, or model dependency. */
 export type Anchor = { id: string; detail: string; source?: string };
@@ -42,6 +42,8 @@ export type MovePacket = {
   line?: Line;
   /** Optional sensed route that this move is explicitly following. */
   routeWaypoint?: Waypoint;
+  /** Situated provenance for this particular walk/re-walk. */
+  traversal?: Traversal;
   frame: Frame; originalIntention: string; selectedInputs: Position[];
   orderedPaths: string[][]; reserves: Draft[]; priorRecordedWaypoint: Position;
   humanDirection: string; dependencyVersions: { exploration: number; frame: number };
@@ -150,20 +152,17 @@ export function orderProposals(output: MoveOutput, existing: Position[], selecte
   const known = new Set(existing.map(p => p.id));
   const chosen = new Set(selected);
   const local = new Map(output.positions.map(p => [`draft:${p.localId}`, p]));
-  const visiting = new Set<string>(); const visited = new Set<string>(); const ordered: Proposal[] = [];
-  function visit(id: string): void {
-    if (visited.has(id)) return;
-    requireThat(!visiting.has(id), 'CYCLE', 'Draft ancestry contains a cycle.');
-    const p = local.get(id);
-    requireThat(p, 'INVALID_PARENT', 'Draft parent is missing.');
-    visiting.add(id);
+  const ordered: Proposal[] = []; const visiting = new Set<string>(); const done = new Set<string>();
+  function visit(p: Proposal) {
+    const key = `draft:${p.localId}`; requireThat(!visiting.has(key), 'CYCLE', 'Draft ancestry cannot contain a cycle.');
+    if (done.has(key)) return; visiting.add(key);
+    let reachesSelected = false;
     for (const parent of p.parentIds) {
-      if (parent.startsWith('draft:')) visit(parent);
-      else requireThat(known.has(parent) && chosen.has(parent), 'INVALID_PARENT',
-        'External parents must be selected inputs in this exploration.');
+      if (local.has(parent)) { visit(local.get(parent)!); reachesSelected = true; }
+      else { requireThat(known.has(parent) && chosen.has(parent), 'INVALID_PARENT', 'External parents must be selected existing arrivals.'); reachesSelected = true; }
     }
-    visiting.delete(id); visited.add(id); ordered.push(p);
+    requireThat(reachesSelected, 'INVALID_PARENT', 'Each proposed arrival must connect to the selected walk.');
+    visiting.delete(key); done.add(key); ordered.push(p);
   }
-  for (const id of local.keys()) visit(id);
-  return ordered;
+  output.positions.forEach(visit); return ordered;
 }
