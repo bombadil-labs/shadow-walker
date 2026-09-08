@@ -34,6 +34,16 @@ function seedFlightLines(explorationId:string):{firstArrivalId:string;firstLineI
   return {firstArrivalId:firstArrival.id,firstLineId:firstLine.id,secondArrivalId:secondArrival.id,secondLineId:alternative.id};
 }
 
+function seedRewalk(explorationId:string):void{
+  let snapshot=store.read(explorationId);const root=snapshot.exploration.rootId,line=snapshot.cartography.lines[0]!;
+  const firstPacket=store.prepare({explorationId,selectedIds:[root],lineId:line.id,humanDirection:'Reach an initial arrival before revisiting it.',requestId:randomUUID()});
+  const firstOutput=proposal(root);firstOutput.positions[0]!.meaning='An initial reading of the architecture boundary.';const firstDraft=store.submit({moveId:firstPacket.moveId,output:firstOutput,requestId:randomUUID()});const firstCap=store.ticket(firstDraft.id);
+  snapshot=store.review({draftId:firstDraft.id,expectedVersion:firstCap.version,token:firstCap.token,action:'land',requestId:randomUUID()});const target=snapshot.positions.at(-1)!;
+  const rewalk=store.prepare({explorationId,selectedIds:[target.id],lineId:line.id,rewalkOfPositionId:target.id,humanDirection:'Revisit this arrival under declared field-test conditions.',traversalContext:{provenance:'host-declared',host:'ChatGPT',model:'GPT-5.6 Sol',skillRevision:'field-test-readability',sessionLabel:'browser re-walk fixture'},requestId:randomUUID()});
+  const output=proposal(target.id);output.positions[0]!.meaning='A later traversal foregrounds changed conditions at the same boundary.';output.positions[0]!.semanticShift={...output.positions[0]!.semanticShift!,summary:'The re-walk preserves the boundary question while making changed conditions newly salient.',newlySalient:[{span:'changed conditions',salience:'high'}]};
+  const draft=store.submit({moveId:rewalk.moveId,output,requestId:randomUUID()});const cap=store.ticket(draft.id);store.review({draftId:draft.id,expectedVersion:cap.version,token:cap.token,action:'land',requestId:randomUUID()});
+}
+
 const vite=await createVite({configFile:false,root:'tests/browser',server:{middlewareMode:true}});
 const server=createServer(async(req,res)=>{
   try{
@@ -44,7 +54,9 @@ const server=createServer(async(req,res)=>{
       const c=CallToolResultSchema.parse(await client.callTool({name:'create_exploration',arguments:{...seed,requestId:randomUUID()}}));
       const snapshot=c.structuredContent!.snapshot as Snapshot;
       const seeded=url.searchParams.has('flightLines')?seedFlightLines(snapshot.exploration.id):undefined;
+      if(url.searchParams.has('rewalk'))seedRewalk(snapshot.exploration.id);
       let current=store.read(snapshot.exploration.id);
+      if(url.searchParams.has('rewalk')){const result=await client.callTool({name:'open_exploration',arguments:{explorationId:current.exploration.id}});if(url.searchParams.has('noMeta'))delete result._meta;json(result);return;}
       if(url.searchParams.has('weaveReview')){
         if(!seeded)throw new Error('weaveReview fixture requires flightLines=1');
         current=store.requestWeave({explorationId:current.exploration.id,lineIds:[seeded.firstLineId,seeded.secondLineId],basisPositionIds:[seeded.firstArrivalId,seeded.secondArrivalId],focus:'Do these independently developed lines preserve the same authority invariant?',requestId:randomUUID()});
