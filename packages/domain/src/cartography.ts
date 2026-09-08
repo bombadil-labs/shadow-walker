@@ -77,6 +77,9 @@ export type Waypoint = {
   question: string;
   provenance: DirectionProvenance;
   status: 'sensed' | 'visited' | 'dissipated';
+  visitedPositionId?: string;
+  resolvedAt?: string;
+  resolutionNote?: string;
   createdAt: string;
 };
 
@@ -152,6 +155,7 @@ export type CartographySnapshot = {
   lines: Line[];
   memberships: LineMembership[];
   transitions: Transition[];
+  waypoints: Waypoint[];
   observations: Observation[];
   constraints: StructuralConstraint[];
   operations: Operation[];
