@@ -9,7 +9,7 @@ import { browserSession, htmlPolicy, HttpError, privateHeaders, readJsonBody } f
 
 export type DashboardPages = { dashboard: string; about: string };
 const callSchema = z.object({
-  name: z.enum(['list_explorations', 'read_exploration', 'open_exploration', 'review_draft']),
+  name: z.enum(['list_explorations', 'read_exploration', 'open_exploration', 'review_draft', 'request_branch', 'request_weave', 'dismiss_gesture_request', 'review_weave_result']),
   arguments: z.record(z.unknown()).default({}),
 }).strict();
 
@@ -30,7 +30,6 @@ export function dashboardRoutes(store: Store, widget: string, pages: DashboardPa
       res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(data));
     };
     try {
-      // Prevent even read-side browser requests from another origin; no CORS wildcard.
       if (req.headers['sec-fetch-site'] && !['same-origin', 'none'].includes(String(req.headers['sec-fetch-site']))) {
         throw new HttpError(403, 'ORIGIN_REQUIRED', 'Cross-site dashboard access is disabled.');
       }
@@ -52,13 +51,12 @@ export function dashboardRoutes(store: Store, widget: string, pages: DashboardPa
       if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); throw new HttpError(405, 'METHOD_NOT_ALLOWED', 'Use POST.'); }
       session.check(req);
       const parsed = callSchema.safeParse(await readJsonBody(req));
-      if (!parsed.success) throw new HttpError(400, 'INVALID_CALL', 'Only exploration inspection and human review are available here.');
+      if (!parsed.success) throw new HttpError(400, 'INVALID_CALL', 'Only exploration inspection, human cartographic requests, and human review are available here.');
       const server = createMcpServer(store, widget);
       const client = new Client({ name: 'shadow-walker-local-dashboard', version: '0.1.0' });
       const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
       try {
         await server.connect(serverTransport); await client.connect(clientTransport);
-        // A raw trusted host can receive _meta. No tokens are copied to URLs, logs or model content.
         const result = CallToolResultSchema.parse(await client.callTool(parsed.data));
         json(200, result);
       } finally { await client.close(); await server.close(); }
