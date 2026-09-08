@@ -1,57 +1,11 @@
 import { test, expect } from '@playwright/test';
 
-test('human Keep this updates the actual store and does not prepare a next move',async({page,request})=>{
-  await page.goto('/');const view=page.frameLocator('#view');
-  await expect(view.getByRole('button',{name:'Keep this',exact:true})).toBeEnabled();
-  await view.getByRole('button',{name:'Keep this',exact:true}).click();
-  await expect(view.getByRole('status')).toContainText('Kept.');
-  const id=await page.locator('body').getAttribute('data-exploration-id');
-  const snapshot=await (await request.get(`/snapshot?id=${id}`)).json();
-  expect(snapshot.positions).toHaveLength(2);expect(snapshot.positions[1].epistemicStatus).toBe('hypothesis');expect(snapshot.activeMove).toBeNull();
-  expect(snapshot.positions[1].semanticShift.newlySalient[0].span).toBe('mismatch');
-});
-test('missing private metadata leaves review disabled',async({page})=>{
-  await page.goto('/?noMeta=1');const view=page.frameLocator('#view');
-  await expect(view.getByText('Review authorization is unavailable or stale.',{exact:false})).toBeVisible();
-  await expect(view.getByRole('button',{name:'Keep this',exact:true})).toBeDisabled();
-});
-test('structured editing requires a saved revision before Keep this',async({page})=>{
-  await page.goto('/');const view=page.frameLocator('#view');
-  await view.getByRole('button',{name:'Change it',exact:true}).click();
-  const editor=view.getByLabel('Main idea');await expect(editor).toBeVisible();
-  await editor.fill('A human-revised hypothesis.');
-  await expect(view.getByRole('button',{name:'Save revision',exact:true})).toBeEnabled();
-  await view.getByRole('button',{name:'Save revision',exact:true}).click();
-  await expect(view.getByRole('status')).toContainText('Revision saved');
-  await expect(view.getByRole('button',{name:'Keep this',exact:true})).toBeEnabled();
-  await view.getByRole('button',{name:'Keep this',exact:true}).click();
-  await expect(view.getByRole('status')).toContainText('Kept.');
-});
-test('Save for later does not add a generated arrival',async({page,request})=>{
-  await page.goto('/');const view=page.frameLocator('#view');
-  await view.getByRole('button',{name:'Save for later',exact:true}).click();
-  await expect(view.getByRole('status')).toContainText('Saved for later');
-  const id=await page.locator('body').getAttribute('data-exploration-id');
-  const snapshot=await (await request.get(`/snapshot?id=${id}`)).json();
-  expect(snapshot.positions).toHaveLength(1);expect(snapshot.drafts[0].status).toBe('reserved');expect(snapshot.activeMove).toBeNull();
-});
-test('map exposes semantic-shift hover/focus copy and an unvisited hollow direction',async({page})=>{
-  await page.goto('/');const view=page.frameLocator('#view');
-  const proposed=view.getByRole('button',{name:/Proposed arrival:/});await proposed.focus();
-  await expect(view.getByText('What entered',{exact:true}).first()).toBeVisible();
-  await expect(view.getByText('mismatch',{exact:true}).first()).toBeVisible();
-  await expect(view.getByText('Hollow nodes are sensed, not visited.',{exact:false})).toBeVisible();
-});
-
-test('Flight Lines structural ecology is visible as map features rather than raw records',async({page})=>{
-  await page.goto('/?flightLines=1');const view=page.frameLocator('#view');
-  const observation=view.getByRole('button',{name:/Grounded observation: A real deployment constraint surfaced/});
-  const constraint=view.getByRole('button',{name:/Structural pressure: External authority arrives asynchronously/});
-  const operation=view.getByRole('button',{name:/Operation: Selective boundary protocol/});
-  const application=view.getByRole('button',{name:/Operation in motion: Treat external reconciliation/});
-  const encounter=view.getByRole('button',{name:/Encounter \/ weave: The two lines disagree/});
-  await expect(observation).toBeVisible();await expect(constraint).toBeVisible();await expect(operation).toBeVisible();await expect(application).toBeVisible();await expect(encounter).toBeVisible();
-  await constraint.click();await expect(view.getByRole('heading',{name:'External authority arrives asynchronously'})).toBeVisible();await expect(view.getByText('Fixture human report')).toBeVisible();
-  await operation.click();await expect(view.getByText('Cell membranes / message-passing systems')).toBeVisible();await expect(view.getByRole('heading',{name:'Executable procedure'})).toBeVisible();
-  await encounter.click();await expect(view.getByText('ENCOUNTER / WEAVE · mismatch')).toBeVisible();await expect(view.getByText('Resonance proposes; it does not prove.')).toBeVisible();
-});
+test('human Keep this updates the actual store and does not prepare a next move',async({page,request})=>{await page.goto('/');const view=page.frameLocator('#view');await expect(view.getByRole('button',{name:'Keep this',exact:true})).toBeEnabled();await view.getByRole('button',{name:'Keep this',exact:true}).click();await expect(view.getByRole('status')).toContainText('Kept.');const id=await page.locator('body').getAttribute('data-exploration-id');const snapshot=await (await request.get(`/snapshot?id=${id}`)).json();expect(snapshot.positions).toHaveLength(2);expect(snapshot.positions[1].epistemicStatus).toBe('hypothesis');expect(snapshot.activeMove).toBeNull();expect(snapshot.positions[1].semanticShift.newlySalient[0].span).toBe('mismatch');});
+test('missing private metadata leaves review disabled',async({page})=>{await page.goto('/?noMeta=1');const view=page.frameLocator('#view');await expect(view.getByText('Review authorization is unavailable or stale.',{exact:false})).toBeVisible();await expect(view.getByRole('button',{name:'Keep this',exact:true})).toBeDisabled();});
+test('structured editing requires a saved revision before Keep this',async({page})=>{await page.goto('/');const view=page.frameLocator('#view');await view.getByRole('button',{name:'Change it',exact:true}).click();const editor=view.getByLabel('Main idea');await expect(editor).toBeVisible();await editor.fill('A human-revised hypothesis.');await expect(view.getByRole('button',{name:'Save revision',exact:true})).toBeEnabled();await view.getByRole('button',{name:'Save revision',exact:true}).click();await expect(view.getByRole('status')).toContainText('Revision saved');await expect(view.getByRole('button',{name:'Keep this',exact:true})).toBeEnabled();await view.getByRole('button',{name:'Keep this',exact:true}).click();await expect(view.getByRole('status')).toContainText('Kept.');});
+test('Save for later does not add a generated arrival',async({page,request})=>{await page.goto('/');const view=page.frameLocator('#view');await view.getByRole('button',{name:'Save for later',exact:true}).click();await expect(view.getByRole('status')).toContainText('Saved for later');const id=await page.locator('body').getAttribute('data-exploration-id');const snapshot=await (await request.get(`/snapshot?id=${id}`)).json();expect(snapshot.positions).toHaveLength(1);expect(snapshot.drafts[0].status).toBe('reserved');expect(snapshot.activeMove).toBeNull();});
+test('map exposes semantic-shift hover/focus copy and an unvisited hollow direction',async({page})=>{await page.goto('/');const view=page.frameLocator('#view');const proposed=view.getByRole('button',{name:/Proposed arrival:/});await proposed.focus();await expect(view.getByText('What entered',{exact:true}).first()).toBeVisible();await expect(view.getByText('mismatch',{exact:true}).first()).toBeVisible();await expect(view.getByText('Hollow nodes are sensed, not visited.',{exact:false})).toBeVisible();});
+test('Flight Lines structural ecology is visible as map features rather than raw records',async({page})=>{await page.goto('/?flightLines=1');const view=page.frameLocator('#view');const observation=view.getByRole('button',{name:/Grounded observation: A real deployment constraint surfaced/});const constraint=view.getByRole('button',{name:/Structural pressure: External authority arrives asynchronously/});const operation=view.getByRole('button',{name:/Operation: Selective boundary protocol/});const application=view.getByRole('button',{name:/Operation in motion: Treat external reconciliation/});const encounter=view.getByRole('button',{name:/Encounter \/ weave: The two lines disagree/});await expect(observation).toBeVisible();await expect(constraint).toBeVisible();await expect(operation).toBeVisible();await expect(application).toBeVisible();await expect(encounter).toBeVisible();await constraint.click();await expect(view.getByRole('heading',{name:'External authority arrives asynchronously'})).toBeVisible();await expect(view.getByText('Fixture human report')).toBeVisible();await operation.click();await expect(view.getByText('Cell membranes / message-passing systems')).toBeVisible();await expect(view.getByRole('heading',{name:'Executable procedure'})).toBeVisible();await encounter.click();await expect(view.getByText('ENCOUNTER / WEAVE · mismatch')).toBeVisible();await expect(view.getByText('Resonance proposes; it does not prove.')).toBeVisible();});
+test('human can preserve a branch intention without visiting new territory',async({page,request})=>{await page.goto('/?noDraft=1');const view=page.frameLocator('#view');await view.getByRole('button',{name:'Open a branch from this arrival'}).click();await view.getByLabel('Line name').fill('Follow the blind spot');await view.getByLabel('Direction for the next walk').fill('Attend to what the current framing keeps excluding.');await view.getByRole('button',{name:'Save branch intention'}).click();await expect(view.getByRole('status')).toContainText('Branch intention saved');const id=await page.locator('body').getAttribute('data-exploration-id');const snapshot=await (await request.get(`/snapshot?id=${id}`)).json();expect(snapshot.positions).toHaveLength(1);expect(snapshot.activeMove).toBeNull();expect(snapshot.cartography.lines).toHaveLength(2);expect(snapshot.cartography.gestureRequests.at(-1).kind).toBe('branch');});
+test('human can request a weave across developed lines without creating an encounter',async({page,request})=>{await page.goto('/?flightLines=1&noDraft=1');const view=page.frameLocator('#view');await view.getByRole('button',{name:'Bring lines into encounter'}).click();const choices=view.locator('.line-choice input:not(:disabled)');expect(await choices.count()).toBeGreaterThanOrEqual(2);for(let i=0;i<await choices.count();i++)await choices.nth(i).check();await view.getByLabel('What should the encounter test?').fill('Do these lines preserve the same invariant, or merely use similar language?');const id=await page.locator('body').getAttribute('data-exploration-id');const before=await (await request.get(`/snapshot?id=${id}`)).json();await view.getByRole('button',{name:'Save weave intention'}).click();await expect(view.getByRole('status')).toContainText('Weave intention saved');const after=await (await request.get(`/snapshot?id=${id}`)).json();expect(after.cartography.encounters).toHaveLength(before.cartography.encounters.length);expect(after.cartography.gestureRequests.at(-1).kind).toBe('weave');expect(after.cartography.weaveProposals).toHaveLength(0);});
+test('human review is required before a conversational weave becomes an encounter',async({page,request})=>{await page.goto('/?flightLines=1&weaveReview=1');const view=page.frameLocator('#view');await expect(view.getByText('PROPOSED WEAVE · REVISION 1')).toBeVisible();await expect(view.getByRole('button',{name:'Keep weave'})).toBeEnabled();const id=await page.locator('body').getAttribute('data-exploration-id');const before=await (await request.get(`/snapshot?id=${id}`)).json();await view.getByRole('button',{name:'Keep weave'}).click();await expect(view.getByRole('status')).toContainText('Weave kept as a candidate encounter');const after=await (await request.get(`/snapshot?id=${id}`)).json();expect(after.cartography.encounters).toHaveLength(before.cartography.encounters.length+1);expect(after.cartography.weaveProposals.at(-1).status).toBe('kept');expect(after.activeMove).toBeNull();});

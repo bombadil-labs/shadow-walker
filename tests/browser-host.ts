@@ -16,7 +16,7 @@ const mcp=createMcpServer(store,html);const client=new Client({name:'browser-fix
 const [clientTransport,serverTransport]=InMemoryTransport.createLinkedPair();
 await mcp.connect(serverTransport);await client.connect(clientTransport);
 
-function seedFlightLines(explorationId:string):{firstArrivalId:string;firstLineId:string}{
+function seedFlightLines(explorationId:string):{firstArrivalId:string;firstLineId:string;secondArrivalId:string;secondLineId:string}{
   let snapshot=store.read(explorationId);const root=snapshot.exploration.rootId;const firstLine=snapshot.cartography.lines[0]!;
   snapshot=store.recordObservation({explorationId,positionId:root,kind:'human-report',detail:'A real deployment constraint surfaced at the boundary.',source:'Fixture human report',requestId:randomUUID()});
   const observation=snapshot.cartography.observations.at(-1)!;
@@ -31,7 +31,7 @@ function seedFlightLines(explorationId:string):{firstArrivalId:string;firstLineI
   const a=landOn(firstLine.id,'One line makes authority explicit at the boundary.');const firstArrival=a.positions.at(-1)!;
   const b=landOn(alternative.id,'Another line distributes reconciliation across participants.');const secondArrival=b.positions.at(-1)!;
   store.recordEncounter({explorationId,lineIds:[firstLine.id,alternative.id],basisPositionIds:[firstArrival.id,secondArrival.id],kind:'mismatch',summary:'The two lines disagree about where reconciliation authority should live.',uncertainty:['The mismatch may depend on deployment topology.'],requestId:randomUUID()});
-  return {firstArrivalId:firstArrival.id,firstLineId:firstLine.id};
+  return {firstArrivalId:firstArrival.id,firstLineId:firstLine.id,secondArrivalId:secondArrival.id,secondLineId:alternative.id};
 }
 
 const vite=await createVite({configFile:false,root:'tests/browser',server:{middlewareMode:true}});
@@ -44,7 +44,15 @@ const server=createServer(async(req,res)=>{
       const c=CallToolResultSchema.parse(await client.callTool({name:'create_exploration',arguments:{...seed,requestId:randomUUID()}}));
       const snapshot=c.structuredContent!.snapshot as Snapshot;
       const seeded=url.searchParams.has('flightLines')?seedFlightLines(snapshot.exploration.id):undefined;
-      const current=store.read(snapshot.exploration.id);
+      let current=store.read(snapshot.exploration.id);
+      if(url.searchParams.has('weaveReview')){
+        if(!seeded)throw new Error('weaveReview fixture requires flightLines=1');
+        current=store.requestWeave({explorationId:current.exploration.id,lineIds:[seeded.firstLineId,seeded.secondLineId],basisPositionIds:[seeded.firstArrivalId,seeded.secondArrivalId],focus:'Do these independently developed lines preserve the same authority invariant?',requestId:randomUUID()});
+        const gesture=current.cartography.gestureRequests.at(-1)!;
+        store.submitWeaveResult({gestureRequestId:gesture.id,kind:'tension',summary:'The lines agree that authority must be explicit but disagree about where reconciliation should live.',uncertainty:['The tension may depend on deployment topology.'],requestId:randomUUID()});
+        const result=await client.callTool({name:'open_exploration',arguments:{explorationId:current.exploration.id}});if(url.searchParams.has('noMeta'))delete result._meta;json(result);return;
+      }
+      if(url.searchParams.has('noDraft')){const result=await client.callTool({name:'open_exploration',arguments:{explorationId:current.exploration.id}});if(url.searchParams.has('noMeta'))delete result._meta;json(result);return;}
       const line=seeded?current.cartography.lines.find(l=>l.id===seeded.firstLineId)!:current.cartography.lines[0]!;
       const selected=seeded?current.positions.find(p=>p.id===seeded.firstArrivalId)!:current.positions.at(-1)!;
       const p=CallToolResultSchema.parse(await client.callTool({name:'prepare_move',arguments:{explorationId:current.exploration.id,selectedIds:[selected.id],lineId:line.id,humanDirection:'One fixture step.',requestId:randomUUID()}}));
@@ -57,7 +65,7 @@ const server=createServer(async(req,res)=>{
     if(url.pathname==='/call'&&req.method==='POST'){
       let body='';for await(const chunk of req){body+=String(chunk);if(body.length>1024*1024)throw new Error('Fixture request too large');}
       const args=JSON.parse(body) as {name:string;arguments:Record<string,unknown>};
-      if(!['open_exploration','read_exploration','review_draft'].includes(args.name))throw new Error('Fixture allows review only');
+      if(!['open_exploration','read_exploration','review_draft','request_branch','request_weave','dismiss_gesture_request','review_weave_result'].includes(args.name))throw new Error('Fixture allows only human app actions');
       json(await client.callTool(args));return;
     }
     vite.middlewares(req,res,()=>{res.writeHead(404);res.end();});
