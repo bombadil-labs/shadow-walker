@@ -9,6 +9,7 @@
     "tests/flight-lines.test.ts",
     "tests/waypoints.test.ts",
     "tests/traversals.test.ts",
+    "tests/gestures.test.ts",
     "tests/fixtures.ts"
   ]
 }

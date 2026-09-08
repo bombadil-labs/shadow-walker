@@ -1,7 +1,7 @@
 import type { MoveContext } from './context.ts';
 import { jsonByteLength, WALK_LIMITS } from './limits.ts';
 import type { CartographySnapshot, Line, SemanticShift, Traversal, Waypoint } from './cartography.ts';
-export type { CartographySnapshot, Encounter, Line, LineMembership, LineStatus, Observation, Operation, OperationApplication, RepresentationMeasurement, SemanticShift, ShiftSalience, ShiftSpan, StructuralConstraint, Transition, TransitionKind, Traversal, TraversalContext, Waypoint } from './cartography.ts';
+export type { BranchGestureRequest, CartographySnapshot, Encounter, GestureRequest, GestureResolution, Line, LineMembership, LineStatus, Observation, Operation, OperationApplication, RepresentationMeasurement, SemanticShift, ShiftSalience, ShiftSpan, StructuralConstraint, Transition, TransitionKind, Traversal, TraversalContext, Waypoint, WeaveGestureRequest, WeaveProposal, WeaveReviewTicket } from './cartography.ts';
 
 /** Domain code has no SDK, UI, database, or model dependency. */
 export type Anchor = { id: string; detail: string; source?: string };
@@ -44,6 +44,8 @@ export type MovePacket = {
   routeWaypoint?: Waypoint;
   /** Situated provenance for this particular walk/re-walk. */
   traversal?: Traversal;
+  /** Present only when this walk is fulfilling a human-initiated branch request. */
+  gestureRequestId?: string;
   frame: Frame; originalIntention: string; selectedInputs: Position[];
   orderedPaths: string[][]; reserves: Draft[]; priorRecordedWaypoint: Position;
   humanDirection: string; dependencyVersions: { exploration: number; frame: number };

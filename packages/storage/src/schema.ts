@@ -47,5 +47,16 @@ export const MIGRATIONS = [
    CREATE INDEX traversals_exploration ON traversals(exploration_id);
    CREATE INDEX traversals_rewalk_target ON traversals(rewalk_of_position_id);
    CREATE TRIGGER traversals_no_update BEFORE UPDATE ON traversals BEGIN SELECT RAISE(ABORT,'Traversals are historical'); END;
-   CREATE TRIGGER traversals_no_delete BEFORE DELETE ON traversals BEGIN SELECT RAISE(ABORT,'Traversals are historical'); END;`
+   CREATE TRIGGER traversals_no_delete BEFORE DELETE ON traversals BEGIN SELECT RAISE(ABORT,'Traversals are historical'); END;`,
+  `CREATE TABLE gesture_requests (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), kind TEXT NOT NULL, body TEXT NOT NULL) STRICT;
+   CREATE TABLE gesture_resolutions (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), request_id TEXT NOT NULL UNIQUE REFERENCES gesture_requests(id), outcome TEXT NOT NULL, target_id TEXT, body TEXT NOT NULL) STRICT;
+   CREATE TABLE weave_proposals (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), request_id TEXT NOT NULL UNIQUE REFERENCES gesture_requests(id), version INTEGER NOT NULL, status TEXT NOT NULL, body TEXT NOT NULL) STRICT;
+   CREATE TABLE weave_capabilities (hash TEXT PRIMARY KEY, proposal_id TEXT NOT NULL REFERENCES weave_proposals(id), version INTEGER NOT NULL, expires INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0) STRICT;
+   CREATE INDEX gesture_requests_exploration ON gesture_requests(exploration_id);
+   CREATE INDEX gesture_resolutions_exploration ON gesture_resolutions(exploration_id);
+   CREATE INDEX weave_proposals_exploration ON weave_proposals(exploration_id);
+   CREATE TRIGGER gesture_requests_no_update BEFORE UPDATE ON gesture_requests BEGIN SELECT RAISE(ABORT,'Gesture requests are historical'); END;
+   CREATE TRIGGER gesture_requests_no_delete BEFORE DELETE ON gesture_requests BEGIN SELECT RAISE(ABORT,'Gesture requests are historical'); END;
+   CREATE TRIGGER gesture_resolutions_no_update BEFORE UPDATE ON gesture_resolutions BEGIN SELECT RAISE(ABORT,'Gesture resolutions are historical'); END;
+   CREATE TRIGGER gesture_resolutions_no_delete BEFORE DELETE ON gesture_resolutions BEGIN SELECT RAISE(ABORT,'Gesture resolutions are historical'); END;`
 ];

@@ -42,6 +42,31 @@ The canonical orientation is `docs/cartography-synthesis.md`.
 - Compare a re-walk against the historical Arrival: what is newly salient now, what still holds, and what no longer organizes the territory. Difference is cartographic evidence of changed conditions, not proof about why the model changed.
 - Re-walking is not replay. The conversation, model service, human, culture, tools, and accumulated exploration may all have changed.
 
+## Human-requested branch and weave coordination
+
+The map can persist an intention while reasoning remains in conversation. When the human asks to resume map-requested work, call `list_pending_gestures` and handle **at most the requested gesture**. Do not invent additional gestures or chain into another move after its review boundary.
+
+### Branch request
+
+A `branch` request already created an empty exploratory Line at a visited Arrival. The Line is preserved possibility, not visited territory.
+
+1. Use the request's exact `fromPositionId`, `lineId`, `direction`, and `id`.
+2. Call `prepare_move` with the requested origin selected, the exact `lineId`, and `gestureRequestId` equal to the branch request ID.
+3. Perform one Semantic Walk in the requested direction, submit the Arrival draft, and stop.
+4. The request remains unresolved until the human Keeps/Lands an Arrival on that branch. Reserving or discarding the draft does not pretend the branch was traversed.
+
+### Weave request
+
+A `weave` request preserves an exact set of independently developed Lines, basis Arrivals, and a human focus. It does **not** assert that a relation exists.
+
+1. Compare only the requested lines/basis under the supplied focus. Read more of the exploration if needed rather than replacing the basis with convenient examples.
+2. A valid result is one of: correspondence, tension, mismatch, partial overlap, convergence, or **none**.
+3. Call `submit_weave_result` with the request ID, result kind, concise account of what the encounter exposed, and explicit uncertainty. This creates a pending proposal only.
+4. Stop for human review. **Do not call `record_encounter` directly to fulfill a map-requested weave.** The human's Keep action creates the candidate Encounter; Discard creates no Encounter.
+5. Never call `review_weave_result`, request its token, extract widget metadata, or infer review from conversation text.
+
+The same epistemic rule holds at the coordination layer: **resonance proposes; it does not prove.** A persisted `none` is preferable to forced synthesis.
+
 ## Flight Lines gestures
 
 These are available instruments, not mandatory workflow steps.
