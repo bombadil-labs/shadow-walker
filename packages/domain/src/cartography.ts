@@ -148,6 +148,56 @@ export type Encounter = {
   createdAt: string;
 };
 
+export type BranchGestureRequest = {
+  id: string;
+  explorationId: string;
+  kind: 'branch';
+  fromPositionId: string;
+  lineId: string;
+  label: string;
+  direction: string;
+  createdAt: string;
+};
+
+export type WeaveGestureRequest = {
+  id: string;
+  explorationId: string;
+  kind: 'weave';
+  lineIds: string[];
+  basisPositionIds: string[];
+  focus: string;
+  createdAt: string;
+};
+
+export type GestureRequest = BranchGestureRequest | WeaveGestureRequest;
+export type GestureResolution = {
+  id: string;
+  explorationId: string;
+  requestId: string;
+  outcome: 'branch-landed' | 'weave-kept' | 'dismissed';
+  targetId?: string;
+  createdAt: string;
+};
+
+export type WeaveProposal = {
+  id: string;
+  explorationId: string;
+  requestId: string;
+  version: number;
+  status: 'pending' | 'kept' | 'discarded';
+  kind: EncounterKind;
+  summary: string;
+  uncertainty: string[];
+  createdAt: string;
+};
+
+export type WeaveReviewTicket = {
+  proposalId: string;
+  version: number;
+  token: string;
+  expiresAt: number;
+};
+
 export type CartographySnapshot = {
   lines: Line[];
   memberships: LineMembership[];
@@ -157,4 +207,7 @@ export type CartographySnapshot = {
   operations: Operation[];
   applications: OperationApplication[];
   encounters: Encounter[];
+  gestureRequests: GestureRequest[];
+  gestureResolutions: GestureResolution[];
+  weaveProposals: WeaveProposal[];
 };
