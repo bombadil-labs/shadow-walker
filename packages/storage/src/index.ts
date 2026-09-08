@@ -4,10 +4,11 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { MIGRATIONS } from './schema.ts';
 import { FlightLinesStore } from './flight-lines.ts';
+import { CoordinationStore } from './coordination.ts';
 import { boundMoveContext } from '../../domain/src/context.ts';
 import { jsonByteLength, WALK_LIMITS } from '../../domain/src/limits.ts';
 import { requireThat, text, orderProposals, validateOutput } from '../../domain/src/index.ts';
-import type { CartographySnapshot, Draft, Exploration, Frame, Line, LineMembership, MoveOutput, MovePacket, Position, ReviewInput, ReviewTicket, Snapshot, Transition } from '../../domain/src/index.ts';
+import type { CartographySnapshot, Draft, Exploration, Frame, Line, LineMembership, MoveOutput, MovePacket, Position, ReviewInput, ReviewTicket, Snapshot, Transition, WeaveReviewTicket } from '../../domain/src/index.ts';
 
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
@@ -22,6 +23,7 @@ export class Store {
   private readonly db:DatabaseSync;
   private readonly now:()=>number;
   private readonly flightLines:FlightLinesStore;
+  private readonly coordination:CoordinationStore;
   private inTransaction=false;
 
   constructor(path=':memory:',now:()=>number=Date.now){
@@ -34,9 +36,9 @@ export class Store {
       requireThat(version<=MIGRATIONS.length,'SCHEMA_NEWER','Database schema is newer than this server.');
       for(let i=version;i<MIGRATIONS.length;i++){this.db.exec(MIGRATIONS[i]!);this.db.exec(`PRAGMA user_version=${i+1}`);}
     });
-    // Legacy M1 positions become visited Arrivals on one explicit line. Historical semantic shifts are never invented.
     this.transaction(()=>this.bootstrapCartography());
     this.flightLines=new FlightLinesStore(this.db,()=>this.stamp(),(explorationId,kind,body)=>this.event(explorationId,kind,body));
+    this.coordination=new CoordinationStore(this.db,()=>this.stamp(),this.now,(explorationId,kind,body)=>this.event(explorationId,kind,body),input=>this.flightLines.recordEncounter(input));
   }
 
   private bootstrapCartography():void{
@@ -65,7 +67,7 @@ export class Store {
     const memberships=this.db.prepare(`SELECT lm.line_id,lm.position_id,lm.role,lm.created_at FROM line_memberships lm JOIN lines l ON l.id=lm.line_id WHERE l.exploration_id=? ORDER BY lm.rowid`).all(explorationId)
       .map(r=>({lineId:String(r.line_id),positionId:String(r.position_id),role:String(r.role) as LineMembership['role'],createdAt:String(r.created_at)}));
     const transitions=(this.db.prepare('SELECT body FROM transitions WHERE exploration_id=? ORDER BY rowid').all(explorationId) as Row[]).map(r=>JSON.parse(r.body) as Transition);
-    return {lines,memberships,transitions,...this.flightLines.snapshot(explorationId)};
+    return {lines,memberships,transitions,...this.flightLines.snapshot(explorationId),...this.coordination.snapshot(explorationId)};
   }
 
   private resolveLine(explorationId:string,selectedIds:string[],requested?:string):Line{
@@ -134,7 +136,7 @@ export class Store {
     text(input.label,'line label',200);return this.transaction(()=>this.receipt(`fork:${input.explorationId}`,input.requestId,input,()=>{
       const s=this.read(input.explorationId),origin=s.positions.find(p=>p.id===input.fromPositionId);requireThat(origin,'NOT_FOUND','The branch origin is not an arrival in this exploration.');
       const line:Line={id:randomUUID(),explorationId:input.explorationId,label:input.label,status:'exploratory',originPositionId:origin.id,createdAt:this.stamp()};
-      this.db.prepare('INSERT INTO lines(id,exploration_id,body) VALUES(?,?,?)').run(line.id,line.explorationId,JSON.stringify(line));this.addMembership(line,origin,'origin');this.event(line.explorationId,'line.forked',{line,fromPositionId:origin.id});return this.read(line.explorationId);
+      this.db.prepare('INSERT INTO lines(id,exploration_id,body) VALUES(?,?,?)').run(line.id,line.explorationId,JSON.stringify(line));this.addMembership(line,origin,'origin');s.exploration.revision++;this.db.prepare('UPDATE explorations SET body=? WHERE id=?').run(JSON.stringify(s.exploration),s.exploration.id);this.event(line.explorationId,'line.forked',{line,fromPositionId:origin.id});return this.read(line.explorationId);
     }));
   }
 
@@ -154,13 +156,32 @@ export class Store {
     return this.transaction(()=>this.receipt(`encounter:${input.explorationId}`,input.requestId,input,()=>{this.flightLines.recordEncounter(input);return this.read(input.explorationId);}));
   }
 
-  prepare(input:{explorationId:string;selectedIds:string[];humanDirection:string;requestId:string;lineId?:string}):MovePacket{
+  requestBranch(input:{explorationId:string;fromPositionId:string;label:string;direction:string;requestId:string}):Snapshot{
+    return this.transaction(()=>this.receipt(`gesture-branch:${input.explorationId}`,input.requestId,input,()=>{this.coordination.requestBranch(input);return this.read(input.explorationId);}));
+  }
+  requestWeave(input:{explorationId:string;lineIds:string[];basisPositionIds:string[];focus:string;requestId:string}):Snapshot{
+    return this.transaction(()=>this.receipt(`gesture-weave:${input.explorationId}`,input.requestId,input,()=>{this.coordination.requestWeave(input);return this.read(input.explorationId);}));
+  }
+  dismissGesture(input:{gestureRequestId:string;requestId:string}):Snapshot{
+    return this.transaction(()=>this.receipt(`gesture-dismiss:${input.gestureRequestId}`,input.requestId,input,()=>{const resolution=this.coordination.dismiss(input.gestureRequestId);return this.read(resolution.explorationId);}));
+  }
+  pendingGestures(explorationId:string){return this.transaction(()=>{this.read(explorationId);return this.coordination.pending(explorationId);});}
+  submitWeaveResult(input:{gestureRequestId:string;kind:'correspondence'|'tension'|'mismatch'|'partial-overlap'|'convergence'|'none';summary:string;uncertainty:string[];requestId:string}){
+    return this.transaction(()=>this.receipt(`weave-result:${input.gestureRequestId}`,input.requestId,input,()=>this.coordination.submitWeave(input)));
+  }
+  weaveTicket(proposalId:string):WeaveReviewTicket{return this.transaction(()=>this.coordination.ticket(proposalId));}
+  reviewWeaveResult(input:{proposalId:string;expectedVersion:number;token:string;action:'keep'|'discard';requestId:string}):Snapshot{
+    const fingerprint={...input,token:hash(input.token)};return this.transaction(()=>this.receipt(`weave-review:${input.proposalId}`,input.requestId,fingerprint,()=>{const result=this.coordination.review(input);return this.read(result.proposal.explorationId);}));
+  }
+
+  prepare(input:{explorationId:string;selectedIds:string[];humanDirection:string;requestId:string;lineId?:string;gestureRequestId?:string}):MovePacket{
     text(input.humanDirection,'humanDirection');requireThat(Array.isArray(input.selectedIds)&&input.selectedIds.length>=1&&input.selectedIds.length<=4&&new Set(input.selectedIds).size===input.selectedIds.length,'INVALID_INPUT','Select one to four unique existing positions.');
     return this.transaction(()=>this.receipt(`prepare:${input.explorationId}`,input.requestId,input,()=>{
       const s=this.read(input.explorationId);requireThat(!this.db.prepare("SELECT id FROM moves WHERE exploration_id=? AND status IN ('prepared','submitted')").get(input.explorationId),'MOVE_IN_PROGRESS','Finish or review the current move before preparing another.');
       const selected=input.selectedIds.map(id=>{const p=s.positions.find(item=>item.id===id);requireThat(p,'INVALID_PARENT','Selected position is not in this exploration.');return p;});
       const line=this.resolveLine(input.explorationId,input.selectedIds,input.lineId);
-      const packet=boundMoveContext({protocolVersion:'0.2',moveId:randomUUID(),kind:'walk',explorationId:input.explorationId,line,frame:s.exploration.frame,originalIntention:s.exploration.intention,selectedInputs:selected,priorRecordedWaypoint:s.positions[s.positions.length-1]!,humanDirection:input.humanDirection,dependencyVersions:{exploration:s.exploration.revision,frame:s.exploration.frame.version},budget:{maxMoves:1,maxPositions:2},instructions:[
+      if(input.gestureRequestId){const gesture=this.coordination.branchRequest(input.gestureRequestId);requireThat(gesture.explorationId===input.explorationId&&gesture.lineId===line.id,'INVALID_GESTURE','Branch request does not match this exploration and line.');requireThat(input.selectedIds.includes(gesture.fromPositionId),'INVALID_GESTURE','The first walk on a requested branch must depart from its requested origin.');}
+      const packet=boundMoveContext({protocolVersion:'0.2',moveId:randomUUID(),kind:'walk',explorationId:input.explorationId,line,...(input.gestureRequestId?{gestureRequestId:input.gestureRequestId}:{}),frame:s.exploration.frame,originalIntention:s.exploration.intention,selectedInputs:selected,priorRecordedWaypoint:s.positions[s.positions.length-1]!,humanDirection:input.humanDirection,dependencyVersions:{exploration:s.exploration.revision,frame:s.exploration.frame.version},budget:{maxMoves:1,maxPositions:2},instructions:[
         'Perform exactly one guided walk. Submit a draft, then stop for human review.',
         'Retain concrete anchors, ancestry, uncertainty, and a live next question.',
         'Record a semanticShift for every proposed arrival: immediate baseline, what became newly salient, what receded, what remained invariant, unexpected connections, new affordances, and an explicit surprise report.',
@@ -185,7 +206,6 @@ export class Store {
     }));
   }
 
-  /** Never return this ticket in model-visible content, logs, or a durable receipt. */
   ticket(draftId:string):ReviewTicket{
     return this.transaction(()=>{const draft=this.load<Draft>('drafts',draftId);requireThat(draft.status==='pending'||draft.status==='reserved','DRAFT_CLOSED','This draft is closed.');
       const token=randomBytes(32).toString('base64url'),expiresAt=this.now()+10*60*1000;this.db.prepare('DELETE FROM capabilities WHERE expires < ?').run(this.now());this.db.prepare('INSERT INTO capabilities(hash,draft_id,version,expires) VALUES(?,?,?,?)').run(hash(token),draft.id,draft.version,expiresAt);return {draftId:draft.id,version:draft.version,token,expiresAt};});
@@ -204,7 +224,7 @@ export class Store {
         const ordered=orderProposals(draft.output,s.positions,packet.selectedInputs.map(p=>p.id),packet.protocolVersion==='0.2'),ids=new Map(ordered.map(p=>[`draft:${p.localId}`,randomUUID()]));
         const landed=ordered.map(({localId,...p}):Position=>{const parentIds=p.parentIds.map(id=>ids.get(id)??id),semanticShift=p.semanticShift?{...p.semanticShift,baselineArrivalIds:p.semanticShift.baselineArrivalIds.map(id=>ids.get(id)??id)}:undefined;return {...p,semanticShift,id:ids.get(`draft:${localId}`)!,explorationId:draft.explorationId,parentIds,originMoveId:draft.moveId,acceptance:'accepted',epistemicStatus:'hypothesis',createdAt:this.stamp()};});
         const line=packet.line??this.resolveLine(packet.explorationId,packet.selectedInputs.map(p=>p.id));for(const p of landed){this.db.prepare('INSERT INTO positions(id,exploration_id,body) VALUES(?,?,?)').run(p.id,p.explorationId,JSON.stringify(p));this.addMembership(line,p);}for(const p of landed)for(const parent of p.parentIds)this.addTransition(line,parent,p);
-        s.exploration.revision++;this.db.prepare('UPDATE explorations SET body=? WHERE id=?').run(JSON.stringify(s.exploration),draft.explorationId);draft.status='landed';this.event(draft.explorationId,'positions.landed',{draftId:draft.id,positions:landed,lineId:line.id});
+        s.exploration.revision++;this.db.prepare('UPDATE explorations SET body=? WHERE id=?').run(JSON.stringify(s.exploration),draft.explorationId);draft.status='landed';this.event(draft.explorationId,'positions.landed',{draftId:draft.id,positions:landed,lineId:line.id});if(packet.gestureRequestId)this.coordination.resolveBranch(packet.gestureRequestId,landed.at(-1)!.id);
       }else draft.status=input.action==='reserve'?'reserved':'discarded';
       draft.version++;this.db.prepare('UPDATE drafts SET body=? WHERE id=?').run(JSON.stringify(draft),draft.id);if(input.action!=='revise')this.db.prepare("UPDATE moves SET status='closed' WHERE id=?").run(draft.moveId);this.db.prepare('UPDATE capabilities SET used=1 WHERE draft_id=?').run(draft.id);this.event(draft.explorationId,`draft.${input.action}`,draft);return this.read(draft.explorationId);
     }));
