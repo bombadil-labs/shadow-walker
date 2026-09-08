@@ -5,7 +5,7 @@ description: Navigate and persist situated latent-space cartography by synthesiz
 
 # Shadow Walker
 
-Shadow Walker is a persistent cartographic workbench, not another model. You perform the reasoning in the conversation. The server preserves path-dependent Arrivals, Lines, transitions, semantic shifts, external observations, candidate constraints, executable operations/applications, encounters, grounding, uncertainty, and human review so territory created in one encounter can become terrain for another.
+Shadow Walker is a persistent cartographic workbench, not another model. You perform the reasoning in the conversation. The server preserves path-dependent Arrivals, Lines, transitions, persistent Waypoints, semantic shifts, external observations, candidate constraints, executable operations/applications, encounters, grounding, uncertainty, and human review so territory created in one encounter can become terrain for another.
 
 The canonical orientation is `docs/cartography-synthesis.md`.
 
@@ -15,14 +15,23 @@ The canonical orientation is `docs/cartography-synthesis.md`.
 ## One cartographic movement
 
 1. Read/open the exploration first. Create a root only from an explicitly requested human intention and initial frame. Current human direction outranks persisted interpretation.
-2. Notice explicit Lines in `snapshot.cartography`. If the human wants to preserve an alternative route, `fork_line` from a visited Arrival before walking it. Forking visits no new territory. Never collapse two lines implicitly just because they share an origin.
+2. Notice explicit Lines and sensed Waypoints in `snapshot.cartography`. A Waypoint is a visible route not yet traversed. If the human wants an independently developing trajectory, `fork_line`; if they want to preserve one future-facing question from an Arrival, `record_waypoint`. Neither visits new territory.
 3. If `activeMove` exists without a draft, resume that packet. If it already has a draft, stop for human review.
-4. Call `prepare_move` for exactly one semantic walk. Supply `lineId` when the selected Arrival belongs to multiple Lines. Use the original intention, frame, selected inputs, ordered paths, prior waypoint, reserves and context omission metadata.
+4. Call `prepare_move` for exactly one semantic walk. Supply `lineId` when the selected Arrival belongs to multiple Lines. When the human chooses a persisted sensed route, supply its `waypointId`; do not treat its destination as already known. Use the original intention, frame, selected inputs, ordered paths, prior waypoint, reserves and context omission metadata.
 5. Do one genuine semantic movement. Deepen/excavate enough that language, relations, or affordances change. A paraphrase or list of associations is not an Arrival.
 6. For every v0.2 proposed Arrival, record `semanticShift` relative to immediate parents: what changed, newly salient spans, receded spans, preserved invariants, unexpected connections, new affordances, and explicit surprise. This is a **walker report**, not access to logits, hidden states, or mechanistic truth. Never fabricate measured displacement.
 7. Keep concrete anchors and explicit uncertainty. Generated examples must be labeled hypothetical.
 8. Submit one or two proposed Arrivals with a stable request ID, then stop. `draft:localId` is only for parents inside the same draft; external parents must be selected visited Arrivals.
-9. The human reviews Arrival drafts in the embedded/standalone app. Never call `review_draft` as the model, request/extract its capability, or infer review from conversation text. Keeping/Land means accepted into this exploration, not true. Review never authorizes automatic continuation.
+9. The human reviews Arrival drafts in the embedded/standalone app. Never call `review_draft` as the model, request/extract its capability, or infer review from conversation text. Keeping/Land means accepted into this exploration, not true. A followed Waypoint becomes visited only after that review lands an Arrival. Review never authorizes automatic continuation.
+
+## Waypoint discipline
+
+- A **Waypoint** is sensed possibility, not visited territory and not a prediction that an answer exists there.
+- Accepted new Arrivals automatically expose their saved `nextQuestion` as a `walker-sensed` Waypoint so paths not taken persist beyond the chat turn.
+- Use waypoint provenance honestly: `human-offered`, `walker-sensed`, `breakdown-emergent`, `operation-adjacent`, or `resonance-detected` describes how a route became visible, not why it is correct.
+- `record_waypoint` can preserve an additional live route without walking it. Do not spray the graph with speculative futures; persist routes that matter to the actual inquiry.
+- Use `dissipate_waypoint` only when the human explicitly wants a sensed route removed from the live frontier. Dissipation keeps it as historical negative space. Do not silently resurrect a dissipated route; a later human can articulate a new Waypoint if it becomes relevant again.
+- Following a Waypoint with `prepare_move` does not mark it visited. Only a reviewed, landed Arrival can do that.
 
 ## Flight Lines gestures
 

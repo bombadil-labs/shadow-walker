@@ -31,7 +31,7 @@ const snapshot=(r:CallToolResult)=>r.structuredContent!.snapshot as Snapshot;
 describe('real SDK client over Streamable HTTP',()=>{
   it('discovers schemas, app-only review metadata and the bundled UI resource',async()=>{
     const {client}=await host();const {tools}=await client.listTools();
-    expect(tools.map(t=>t.name)).toEqual(expect.arrayContaining(['create_exploration','prepare_move','submit_move','review_draft']));
+    expect(tools.map(t=>t.name)).toEqual(expect.arrayContaining(['create_exploration','record_waypoint','dissipate_waypoint','prepare_move','submit_move','review_draft']));
     expect((tools.find(t=>t.name==='review_draft')!._meta?.ui as {visibility:string[]}).visibility).toEqual(['app']);
     const resource=await client.readResource({uri:UI_URI});
     const content=resource.contents[0];
@@ -55,8 +55,23 @@ describe('real SDK client over Streamable HTTP',()=>{
     // This raw SDK client is the trusted-host test driver, not proof of a human click.
     const landed=await h.call('review_draft',{draftId:ticket.draftId,expectedVersion:ticket.version,token:ticket.token,action:'land',requestId:'land'});
     expect(landed.isError).not.toBe(true);expect(snapshot(landed).positions).toHaveLength(2);
+    expect(snapshot(landed).cartography.waypoints).toHaveLength(1);
+    expect(snapshot(landed).cartography.waypoints[0]!.status).toBe('sensed');
     expect(snapshot(landed).activeMove).toBeNull();await h.close();
     const next=await host(path);expect(snapshot(await next.call('read_exploration',{explorationId:created.exploration.id}))).toEqual(snapshot(landed));
+  });
+  it('persists and explicitly follows sensed waypoints without visiting them before review',async()=>{
+    const h=await host();const created=snapshot(await h.call('create_exploration',seed));
+    const routeResult=await h.call('record_waypoint',{explorationId:created.exploration.id,fromPositionId:created.exploration.rootId,question:'What changes if we follow the preserved alternative?',provenance:'human-offered',requestId:'route'});
+    const route=snapshot(routeResult).cartography.waypoints[0]!;expect(route.status).toBe('sensed');
+    const prepared=await h.call('prepare_move',{explorationId:created.exploration.id,selectedIds:[created.exploration.rootId],lineId:created.cartography.lines[0]!.id,waypointId:route.id,humanDirection:'Follow the saved route one step.',requestId:'follow'});
+    const packet=prepared.structuredContent!.packet as MovePacket;expect(packet.routeWaypoint?.id).toBe(route.id);
+    const submitted=await h.call('submit_move',{moveId:packet.moveId,output:proposal(created.exploration.rootId),requestId:'submit-route'});
+    expect(snapshot(submitted).cartography.waypoints.find(w=>w.id===route.id)?.status).toBe('sensed');
+    const ticket=submitted._meta![TICKET_META] as ReviewTicket;
+    const landed=await h.call('review_draft',{draftId:ticket.draftId,expectedVersion:ticket.version,token:ticket.token,action:'land',requestId:'land-route'});
+    const after=snapshot(landed);expect(after.cartography.waypoints.find(w=>w.id===route.id)?.status).toBe('visited');
+    expect(after.cartography.waypoints.some(w=>w.status==='sensed'&&w.fromPositionId===after.positions.at(-1)!.id)).toBe(true);
   });
   it('does not accept a fabricated token even through a direct tools/call',async()=>{
     const h=await host();const created=snapshot(await h.call('create_exploration',seed));
@@ -66,7 +81,6 @@ describe('real SDK client over Streamable HTTP',()=>{
   it('refuses hostile Origin/Host, malformed JSON, and unsupported methods',async()=>{
     const {url}=await host();
     expect((await fetch(url,{method:'POST',headers:{Origin:'https://evil.example','content-type':'application/json'},body:'{}'})).status).toBe(403);
-    // Fetch may normalize Host. Use node:http to test the actual hostile wire header.
     const hostileHostStatus=await new Promise<number|undefined>((resolve,reject)=>{
       const req=httpRequest(url,{method:'POST',headers:{Host:'evil.example','content-type':'application/json'}},res=>{res.resume();resolve(res.statusCode);});
       req.on('error',reject);req.end('{}');

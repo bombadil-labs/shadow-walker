@@ -43,5 +43,9 @@ export const MIGRATIONS = [
    CREATE TRIGGER encounters_no_update BEFORE UPDATE ON encounters BEGIN SELECT RAISE(ABORT,'Encounters are historical'); END;
    CREATE TRIGGER encounters_no_delete BEFORE DELETE ON encounters BEGIN SELECT RAISE(ABORT,'Encounters are historical'); END;
    CREATE TRIGGER encounter_lines_no_update BEFORE UPDATE ON encounter_lines BEGIN SELECT RAISE(ABORT,'Encounter membership is historical'); END;
-   CREATE TRIGGER encounter_lines_no_delete BEFORE DELETE ON encounter_lines BEGIN SELECT RAISE(ABORT,'Encounter membership is historical'); END;`
+   CREATE TRIGGER encounter_lines_no_delete BEFORE DELETE ON encounter_lines BEGIN SELECT RAISE(ABORT,'Encounter membership is historical'); END;`,
+  `CREATE TABLE waypoints (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), from_position_id TEXT NOT NULL REFERENCES positions(id), status TEXT NOT NULL, body TEXT NOT NULL) STRICT;
+   CREATE INDEX waypoints_exploration ON waypoints(exploration_id);
+   CREATE INDEX waypoints_origin ON waypoints(from_position_id);
+   CREATE TRIGGER waypoints_no_delete BEFORE DELETE ON waypoints BEGIN SELECT RAISE(ABORT,'Waypoints are historical'); END;`
 ];

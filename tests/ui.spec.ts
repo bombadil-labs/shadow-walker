@@ -9,6 +9,8 @@ test('human Keep this updates the actual store and does not prepare a next move'
   const snapshot=await (await request.get(`/snapshot?id=${id}`)).json();
   expect(snapshot.positions).toHaveLength(2);expect(snapshot.positions[1].epistemicStatus).toBe('hypothesis');expect(snapshot.activeMove).toBeNull();
   expect(snapshot.positions[1].semanticShift.newlySalient[0].span).toBe('mismatch');
+  expect(snapshot.cartography.waypoints).toHaveLength(1);expect(snapshot.cartography.waypoints[0].status).toBe('sensed');
+  await expect(view.getByRole('button',{name:/Unvisited direction: What would a mismatch invite us to ask next/})).toBeVisible();
 });
 test('missing private metadata leaves review disabled',async({page})=>{
   await page.goto('/?noMeta=1');const view=page.frameLocator('#view');
