@@ -21,7 +21,13 @@ function stringList(value: unknown, name: string, options: { min?: number; max?:
 }
 
 export class FlightLinesStore {
-  constructor(private readonly db: DatabaseSync, private readonly stamp: () => string, private readonly event: EventFn) {}
+  private readonly db: DatabaseSync;
+  private readonly stamp: () => string;
+  private readonly event: EventFn;
+
+  constructor(db: DatabaseSync, stamp: () => string, event: EventFn) {
+    this.db=db; this.stamp=stamp; this.event=event;
+  }
 
   private exists(table: 'explorations'|'positions'|'lines'|'observations'|'structural_constraints'|'operations', id: string, explorationId: string): boolean {
     const column=table==='lines'||table==='observations'||table==='structural_constraints'||table==='operations'?'exploration_id':table==='positions'?'exploration_id':null;
