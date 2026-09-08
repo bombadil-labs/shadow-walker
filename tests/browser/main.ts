@@ -1,8 +1,7 @@
 import { AppBridge, PostMessageTransport } from '@modelcontextprotocol/ext-apps/app-bridge';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
-const params=new URLSearchParams(location.search);const flags=new URLSearchParams();if(params.has('noMeta'))flags.set('noMeta','1');if(params.has('flightLines'))flags.set('flightLines','1');const suffix=flags.size?`?${flags}`:'';
-const initial=await fetch(`/initial${suffix}`).then(r=>r.json()) as CallToolResult;
+const initial=await fetch(`/initial${location.search}`).then(r=>r.json()) as CallToolResult;
 const snapshot=initial.structuredContent!.snapshot as {exploration:{id:string}};
 document.body.dataset.explorationId=snapshot.exploration.id;
 const iframe=document.createElement('iframe');iframe.id='view';iframe.title='Shadow Walker review';

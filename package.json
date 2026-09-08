@@ -4,19 +4,36 @@
   "private": true,
   "type": "module",
   "description": "A persistent, human-reviewed toolkit for situated latent-space cartography",
-  "engines": {"node": ">=24.11.0 <25"},
+  "engines": {
+    "node": ">=24.11.0 <25"
+  },
   "scripts": {
     "dev": "node --experimental-strip-types apps/server/src/index.ts",
     "start": "node dist/apps/server/src/index.js",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json && vite build && vite build --config vite.dashboard.config.ts && node scripts/build-site.mjs",
     "test": "npm run test:core && npm run test:integration",
-    "test:core": "node --experimental-strip-types --test tests/core.test.ts tests/context.test.ts tests/cartography.test.ts tests/flight-lines.test.ts tests/waypoints.test.ts tests/traversals.test.ts tests/browser-security.test.ts",
+    "test:core": "node --experimental-strip-types --test tests/core.test.ts tests/context.test.ts tests/cartography.test.ts tests/flight-lines.test.ts tests/waypoints.test.ts tests/traversals.test.ts tests/gestures.test.ts tests/browser-security.test.ts",
     "test:integration": "vitest run",
     "test:browser": "playwright test",
     "check": "npm run typecheck && npm run build && npm test",
     "typecheck:core": "tsc --noEmit -p tsconfig.core.json"
   },
-  "dependencies": {"@modelcontextprotocol/ext-apps": "1.1.2","@modelcontextprotocol/sdk": "1.27.1","react": "19.2.0","react-dom": "19.2.0","zod": "3.25.76"},
-  "devDependencies": {"@playwright/test": "1.58.2","@types/node": "24.10.1","@types/react": "19.2.2","@types/react-dom": "19.2.2","typescript": "5.9.3","vite": "7.3.6","vite-plugin-singlefile": "2.3.0","vitest": "4.1.11"}
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "1.1.2",
+    "@modelcontextprotocol/sdk": "1.27.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "typescript": "5.9.3",
+    "vite": "7.3.6",
+    "vite-plugin-singlefile": "2.3.0",
+    "vitest": "4.1.11"
+  }
 }
