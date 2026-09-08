@@ -29,9 +29,13 @@ jobs:
       matrix:
         include:
           - surface: embedded-app
-            spec: tests/ui.spec.ts
-          - surface: standalone-dashboard
-            spec: tests/dashboard.spec.ts
+            command: npx playwright test tests/ui.spec.ts
+          - surface: standalone-review
+            command: npx playwright test tests/dashboard.spec.ts --grep "standalone page opens"
+          - surface: standalone-picker
+            command: npx playwright test tests/dashboard.spec.ts --grep "exploration picker"
+          - surface: standalone-landing
+            command: npx playwright test tests/dashboard.spec.ts --grep "public landing page"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,7 +46,7 @@ jobs:
       - name: Build production bundles
         run: npm run build
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test ${{ matrix.spec }}
+      - run: ${{ matrix.command }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
