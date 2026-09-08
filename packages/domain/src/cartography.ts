@@ -69,35 +69,92 @@ export type Transition = {
   createdAt: string;
 };
 
+export type DirectionProvenance = 'human-offered' | 'walker-sensed' | 'breakdown-emergent' | 'operation-adjacent' | 'resonance-detected';
+export type Waypoint = {
+  id: string;
+  explorationId: string;
+  fromPositionId: string;
+  question: string;
+  provenance: DirectionProvenance;
+  status: 'sensed' | 'visited' | 'dissipated';
+  createdAt: string;
+};
+
+/** External-to-model evidence. There is deliberately no `model-generated` provenance. */
+export type Observation = {
+  id: string;
+  explorationId: string;
+  positionId?: string;
+  kind: 'human-report' | 'source' | 'tool-result' | 'measurement';
+  detail: string;
+  source: string;
+  observedAt?: string;
+  createdAt: string;
+};
+
+export type ConstraintProvenance = 'walker-report' | 'human-offered' | 'observation-derived' | 'breakdown-derived';
+export type StructuralConstraint = {
+  id: string;
+  explorationId: string;
+  label: string;
+  description: string;
+  discoveredAtPositionId: string;
+  provenance: ConstraintProvenance;
+  observationIds: string[];
+  epistemicStatus: 'candidate';
+  createdAt: string;
+};
+
+/** A deterritorialized executable capacity. A resemblance without mechanics is not an Operation. */
+export type Operation = {
+  id: string;
+  explorationId: string;
+  name: string;
+  originDomain: string;
+  inputStructure: string;
+  outputStructure: string;
+  preserves: string[];
+  transforms: string[];
+  procedure: string[];
+  constraintIds: string[];
+  epistemicStatus: 'candidate';
+  createdAt: string;
+};
+
+export type OperationApplication = {
+  id: string;
+  explorationId: string;
+  operationId: string;
+  lineId: string;
+  targetConstraintIds: string[];
+  adaptation: string;
+  protocol: string[];
+  outcome: 'proposed' | 'executed' | 'observed' | 'broke-down';
+  observationIds: string[];
+  revealedConstraintIds: string[];
+  createdAt: string;
+};
+
+export type EncounterKind = 'correspondence' | 'tension' | 'mismatch' | 'partial-overlap' | 'convergence' | 'none';
+export type Encounter = {
+  id: string;
+  explorationId: string;
+  lineIds: string[];
+  basisPositionIds: string[];
+  kind: EncounterKind;
+  summary: string;
+  uncertainty: string[];
+  epistemicStatus: 'candidate';
+  createdAt: string;
+};
+
 export type CartographySnapshot = {
   lines: Line[];
   memberships: LineMembership[];
   transitions: Transition[];
-};
-
-/** Future first-class objects. Declared now so the ontology does not collapse them into prose annotations. */
-export type Waypoint = {
-  id: string; explorationId: string; fromPositionId: string; question: string;
-  provenance: 'human-offered' | 'walker-sensed' | 'breakdown-emergent' | 'operation-adjacent' | 'resonance-detected';
-  status: 'sensed' | 'visited' | 'dissipated'; createdAt: string;
-};
-export type StructuralConstraint = {
-  id: string; explorationId: string; label: string; description: string;
-  discoveredAtPositionId: string; status: 'active' | 'revised' | 'resolved'; createdAt: string;
-};
-export type Operation = {
-  id: string; explorationId: string; name: string; originDomain: string;
-  inputStructure: string; outputStructure: string; preserves: string[]; transforms: string[];
-  procedure: string[]; createdAt: string;
-};
-export type OperationApplication = {
-  id: string; explorationId: string; operationId: string; lineId: string;
-  targetConstraintIds: string[]; adaptation: string; protocol: string[];
-  outcome: 'proposed' | 'executed' | 'observed' | 'broke-down';
-  observationIds: string[]; revealedConstraintIds: string[]; createdAt: string;
-};
-export type Encounter = {
-  id: string; explorationId: string; lineIds: string[];
-  kind: 'correspondence' | 'tension' | 'mismatch' | 'partial-overlap' | 'convergence' | 'none';
-  summary: string; createdAt: string;
+  observations: Observation[];
+  constraints: StructuralConstraint[];
+  operations: Operation[];
+  applications: OperationApplication[];
+  encounters: Encounter[];
 };

@@ -20,5 +20,28 @@ export const MIGRATIONS = [
    CREATE TRIGGER line_memberships_no_update BEFORE UPDATE ON line_memberships BEGIN SELECT RAISE(ABORT,'Line membership is historical'); END;
    CREATE TRIGGER line_memberships_no_delete BEFORE DELETE ON line_memberships BEGIN SELECT RAISE(ABORT,'Line membership is historical'); END;
    CREATE TRIGGER transitions_no_update BEFORE UPDATE ON transitions BEGIN SELECT RAISE(ABORT,'Transitions are historical'); END;
-   CREATE TRIGGER transitions_no_delete BEFORE DELETE ON transitions BEGIN SELECT RAISE(ABORT,'Transitions are historical'); END;`
+   CREATE TRIGGER transitions_no_delete BEFORE DELETE ON transitions BEGIN SELECT RAISE(ABORT,'Transitions are historical'); END;`,
+  `CREATE TABLE observations (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), position_id TEXT REFERENCES positions(id), body TEXT NOT NULL) STRICT;
+   CREATE TABLE structural_constraints (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), discovered_at_position_id TEXT NOT NULL REFERENCES positions(id), body TEXT NOT NULL) STRICT;
+   CREATE TABLE operations (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), body TEXT NOT NULL) STRICT;
+   CREATE TABLE operation_applications (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), operation_id TEXT NOT NULL REFERENCES operations(id), line_id TEXT NOT NULL REFERENCES lines(id), body TEXT NOT NULL) STRICT;
+   CREATE TABLE encounters (id TEXT PRIMARY KEY, exploration_id TEXT NOT NULL REFERENCES explorations(id), body TEXT NOT NULL) STRICT;
+   CREATE TABLE encounter_lines (encounter_id TEXT NOT NULL REFERENCES encounters(id), line_id TEXT NOT NULL REFERENCES lines(id), PRIMARY KEY(encounter_id,line_id)) STRICT;
+   CREATE INDEX observations_exploration ON observations(exploration_id);
+   CREATE INDEX constraints_exploration ON structural_constraints(exploration_id);
+   CREATE INDEX operations_exploration ON operations(exploration_id);
+   CREATE INDEX applications_exploration ON operation_applications(exploration_id);
+   CREATE INDEX encounters_exploration ON encounters(exploration_id);
+   CREATE TRIGGER observations_no_update BEFORE UPDATE ON observations BEGIN SELECT RAISE(ABORT,'Observations are historical'); END;
+   CREATE TRIGGER observations_no_delete BEFORE DELETE ON observations BEGIN SELECT RAISE(ABORT,'Observations are historical'); END;
+   CREATE TRIGGER structural_constraints_no_update BEFORE UPDATE ON structural_constraints BEGIN SELECT RAISE(ABORT,'Constraints are historical'); END;
+   CREATE TRIGGER structural_constraints_no_delete BEFORE DELETE ON structural_constraints BEGIN SELECT RAISE(ABORT,'Constraints are historical'); END;
+   CREATE TRIGGER operations_no_update BEFORE UPDATE ON operations BEGIN SELECT RAISE(ABORT,'Operations are historical'); END;
+   CREATE TRIGGER operations_no_delete BEFORE DELETE ON operations BEGIN SELECT RAISE(ABORT,'Operations are historical'); END;
+   CREATE TRIGGER operation_applications_no_update BEFORE UPDATE ON operation_applications BEGIN SELECT RAISE(ABORT,'Applications are historical'); END;
+   CREATE TRIGGER operation_applications_no_delete BEFORE DELETE ON operation_applications BEGIN SELECT RAISE(ABORT,'Applications are historical'); END;
+   CREATE TRIGGER encounters_no_update BEFORE UPDATE ON encounters BEGIN SELECT RAISE(ABORT,'Encounters are historical'); END;
+   CREATE TRIGGER encounters_no_delete BEFORE DELETE ON encounters BEGIN SELECT RAISE(ABORT,'Encounters are historical'); END;
+   CREATE TRIGGER encounter_lines_no_update BEFORE UPDATE ON encounter_lines BEGIN SELECT RAISE(ABORT,'Encounter membership is historical'); END;
+   CREATE TRIGGER encounter_lines_no_delete BEFORE DELETE ON encounter_lines BEGIN SELECT RAISE(ABORT,'Encounter membership is historical'); END;`
 ];
