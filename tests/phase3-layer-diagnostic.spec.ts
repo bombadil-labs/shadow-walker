@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const enableAll=async(view:ReturnType<Parameters<typeof test>[0]> extends never ? never : any)=>{
+const enableAll=async(view:any)=>{
   for(const name of ['Evidence','Structure','Operations','Encounters'])await view.getByLabel(new RegExp(`^${name}`)).check();
 };
 
