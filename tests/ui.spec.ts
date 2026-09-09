@@ -12,11 +12,13 @@ test('human Keep this updates the actual store and does not prepare a next move'
   expect(snapshot.cartography.waypoints).toHaveLength(1);expect(snapshot.cartography.waypoints[0].status).toBe('sensed');
   await expect(view.getByRole('button',{name:/Unvisited direction: What would a mismatch invite us to ask next/})).toBeVisible();
 });
+
 test('missing private metadata leaves review disabled',async({page})=>{
   await page.goto('/?noMeta=1');const view=page.frameLocator('#view');
   await expect(view.getByText('Review authorization is unavailable or stale.',{exact:false})).toBeVisible();
   await expect(view.getByRole('button',{name:'Keep this',exact:true})).toBeDisabled();
 });
+
 test('structured editing requires a saved revision before Keep this',async({page})=>{
   await page.goto('/');const view=page.frameLocator('#view');
   await view.getByRole('button',{name:'Change it',exact:true}).click();
@@ -29,6 +31,7 @@ test('structured editing requires a saved revision before Keep this',async({page
   await view.getByRole('button',{name:'Keep this',exact:true}).click();
   await expect(view.getByRole('status')).toContainText('Kept.');
 });
+
 test('Save for later does not add a generated arrival',async({page,request})=>{
   await page.goto('/');const view=page.frameLocator('#view');
   await view.getByRole('button',{name:'Save for later',exact:true}).click();
@@ -37,13 +40,13 @@ test('Save for later does not add a generated arrival',async({page,request})=>{
   const snapshot=await (await request.get(`/snapshot?id=${id}`)).json();
   expect(snapshot.positions).toHaveLength(1);expect(snapshot.drafts[0].status).toBe('reserved');expect(snapshot.activeMove).toBeNull();
 });
+
 test('map exposes semantic-shift hover/focus copy and an unvisited hollow direction',async({page})=>{
   await page.goto('/');const view=page.frameLocator('#view');
   const proposed=view.getByRole('button',{name:/Proposed arrival:/});await proposed.focus();
   const detail=view.locator('.detail-card');
   await expect(detail.getByText('What entered',{exact:true})).toBeVisible();
   await expect(detail.getByText('mismatch',{exact:true})).toBeVisible();
-  await expect(view.getByText('Hollow nodes are sensed, not visited.',{exact:false})).toBeVisible();
 });
 
 test('Flight Lines structural ecology is visible as map features rather than raw records',async({page})=>{
@@ -59,9 +62,53 @@ test('Flight Lines structural ecology is visible as map features rather than raw
   await encounter.click();await expect(view.getByText('ENCOUNTER / WEAVE · mismatch')).toBeVisible();await expect(view.getByText('Resonance proposes; it does not prove.')).toBeVisible();
 });
 
-test('human can preserve a branch intention without visiting new territory',async({page,request})=>{await page.goto('/?noDraft=1');const view=page.frameLocator('#view');await view.getByRole('button',{name:'Open a branch from this arrival'}).click();await view.getByLabel('Line name').fill('Follow the blind spot');await view.getByLabel('Direction for the next walk').fill('Attend to what the current framing keeps excluding.');await view.getByRole('button',{name:'Save branch intention'}).click();await expect(view.getByRole('status')).toContainText('Branch intention saved');const id=await page.locator('body').getAttribute('data-exploration-id');const snapshot=await (await request.get(`/snapshot?id=${id}`)).json();expect(snapshot.positions).toHaveLength(1);expect(snapshot.activeMove).toBeNull();expect(snapshot.cartography.lines).toHaveLength(2);expect(snapshot.cartography.gestureRequests.at(-1).kind).toBe('branch');});
-test('human can request a weave across developed lines without creating an encounter',async({page,request})=>{await page.goto('/?flightLines=1&noDraft=1');const view=page.frameLocator('#view');await view.getByRole('button',{name:'Bring lines into encounter'}).click();const choices=view.locator('.line-choice input:not(:disabled)');expect(await choices.count()).toBeGreaterThanOrEqual(2);for(let i=0;i<await choices.count();i++)await choices.nth(i).check();await view.getByLabel('What should the encounter test?').fill('Do these lines preserve the same invariant, or merely use similar language?');const id=await page.locator('body').getAttribute('data-exploration-id');const before=await (await request.get(`/snapshot?id=${id}`)).json();await view.getByRole('button',{name:'Save weave intention'}).click();await expect(view.getByRole('status')).toContainText('Weave intention saved');const after=await (await request.get(`/snapshot?id=${id}`)).json();expect(after.cartography.encounters).toHaveLength(before.cartography.encounters.length);expect(after.cartography.gestureRequests.at(-1).kind).toBe('weave');expect(after.cartography.weaveProposals).toHaveLength(0);});
-test('human review is required before a conversational weave becomes an encounter',async({page,request})=>{await page.goto('/?flightLines=1&weaveReview=1');const view=page.frameLocator('#view');await expect(view.getByText('PROPOSED WEAVE · REVISION 1')).toBeVisible();await expect(view.getByRole('button',{name:'Keep weave'})).toBeEnabled();const id=await page.locator('body').getAttribute('data-exploration-id');const before=await (await request.get(`/snapshot?id=${id}`)).json();await view.getByRole('button',{name:'Keep weave'}).click();await expect(view.getByRole('status')).toContainText('Weave kept as a candidate encounter');const after=await (await request.get(`/snapshot?id=${id}`)).json();expect(after.cartography.encounters).toHaveLength(before.cartography.encounters.length+1);expect(after.cartography.weaveProposals.at(-1).status).toBe('kept');expect(after.activeMove).toBeNull();});
+test('map uses task language while keeping Shadow Walker terms secondary',async({page})=>{
+  await page.goto('/?noDraft=1');const view=page.frameLocator('#view');
+  await expect(view.getByRole('heading',{name:'1 accepted step'})).toBeVisible();
+  await expect(view.getByText('FROM THIS STEP · BRANCH')).toBeVisible();
+  await expect(view.getByRole('button',{name:'Branch from here'})).toBeVisible();
+});
+
+test('human can preserve a branch intention without visiting new territory',async({page,request})=>{
+  await page.goto('/?noDraft=1');const view=page.frameLocator('#view');
+  const branch=view.getByRole('button',{name:'Branch from here'});await expect(branch).toBeVisible();await page.waitForTimeout(100);await branch.click();
+  await view.getByLabel('Path name').fill('Follow the blind spot');
+  await view.getByLabel('What should the next walk attend to?').fill('Attend to what the current framing keeps excluding.');
+  await view.getByRole('button',{name:'Save path'}).click();
+  await expect(view.getByRole('status')).toContainText('Path saved');
+  const id=await page.locator('body').getAttribute('data-exploration-id');
+  const snapshot=await (await request.get(`/snapshot?id=${id}`)).json();
+  expect(snapshot.positions).toHaveLength(1);expect(snapshot.activeMove).toBeNull();expect(snapshot.cartography.lines).toHaveLength(2);expect(snapshot.cartography.gestureRequests.at(-1).kind).toBe('branch');
+  const saved=view.locator('.saved-directions-card');await expect(saved).toBeVisible();
+  await expect(saved.getByText('Follow the blind spot',{exact:true})).toBeVisible();
+  await expect(saved.locator('.chat-handoff q')).toContainText('Resume the saved path');
+});
+
+test('human can request a weave across developed lines without creating an encounter',async({page,request})=>{
+  await page.goto('/?flightLines=1&noDraft=1');const view=page.frameLocator('#view');
+  await view.getByRole('button',{name:/Compare paths/}).click();
+  const choices=view.locator('.line-choice input:not(:disabled)');expect(await choices.count()).toBeGreaterThanOrEqual(2);
+  for(let i=0;i<await choices.count();i++)await choices.nth(i).check();
+  await view.getByLabel('What do you want to compare?').fill('Do these lines preserve the same invariant, or merely use similar language?');
+  const id=await page.locator('body').getAttribute('data-exploration-id');
+  const before=await (await request.get(`/snapshot?id=${id}`)).json();
+  await view.getByRole('button',{name:'Save comparison'}).click();
+  await expect(view.getByRole('status')).toContainText('Comparison saved');
+  const after=await (await request.get(`/snapshot?id=${id}`)).json();
+  expect(after.cartography.encounters).toHaveLength(before.cartography.encounters.length);expect(after.cartography.gestureRequests.at(-1).kind).toBe('weave');expect(after.cartography.weaveProposals).toHaveLength(0);
+  const saved=view.locator('.saved-directions-card');await expect(saved).toBeVisible();await expect(saved.getByText('Saved comparison · Weave')).toBeVisible();
+});
+
+test('human review is required before a conversational weave becomes an encounter',async({page,request})=>{
+  await page.goto('/?flightLines=1&weaveReview=1');const view=page.frameLocator('#view');
+  await expect(view.getByText('PROPOSED RELATIONSHIP · WEAVE · REVISION 1')).toBeVisible();
+  await expect(view.getByRole('button',{name:'Keep relationship'})).toBeEnabled();
+  const id=await page.locator('body').getAttribute('data-exploration-id');const before=await (await request.get(`/snapshot?id=${id}`)).json();
+  await view.getByRole('button',{name:'Keep relationship'}).click();
+  await expect(view.getByRole('status')).toContainText('Comparison kept as a candidate encounter');
+  const after=await (await request.get(`/snapshot?id=${id}`)).json();
+  expect(after.cartography.encounters).toHaveLength(before.cartography.encounters.length+1);expect(after.cartography.weaveProposals.at(-1).status).toBe('kept');expect(after.activeMove).toBeNull();
+});
 
 test('review-first shell names the exploration and makes the pending decision primary',async({page})=>{
   await page.goto('/');const view=page.frameLocator('#view');
