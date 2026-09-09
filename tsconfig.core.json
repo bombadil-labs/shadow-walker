@@ -10,6 +10,7 @@
     "tests/waypoints.test.ts",
     "tests/traversals.test.ts",
     "tests/gestures.test.ts",
+    "tests/postgres-contract.test.ts",
     "tests/fixtures.ts"
   ]
 }
