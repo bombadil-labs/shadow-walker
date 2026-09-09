@@ -49,8 +49,10 @@ test('map exposes semantic-shift hover/focus copy and an unvisited hollow direct
   await expect(detail.getByText('mismatch',{exact:true})).toBeVisible();
 });
 
-test('Flight Lines structural ecology is visible as map features rather than raw records',async({page})=>{
+test('Flight Lines structural ecology is available as optional map layers',async({page})=>{
   await page.goto('/?flightLines=1');const view=page.frameLocator('#view');
+  await expect(view.getByRole('button',{name:/Structural pressure: External authority arrives asynchronously/})).toHaveCount(0);
+  for(const name of ['Evidence','Structure','Operations','Encounters'])await view.getByLabel(new RegExp(`^${name}`)).check();
   const observation=view.getByRole('button',{name:/Grounded observation: A real deployment constraint surfaced/});
   const constraint=view.getByRole('button',{name:/Structural pressure: External authority arrives asynchronously/});
   const operation=view.getByRole('button',{name:/Operation: Selective boundary protocol/});
@@ -60,6 +62,28 @@ test('Flight Lines structural ecology is visible as map features rather than raw
   await constraint.click();await expect(view.getByRole('heading',{name:'External authority arrives asynchronously'})).toBeVisible();await expect(view.getByText('Fixture human report')).toBeVisible();
   await operation.click();await expect(view.getByText('Cell membranes / message-passing systems')).toBeVisible();await expect(view.getByRole('heading',{name:'Executable procedure'})).toBeVisible();
   await encounter.click();await expect(view.getByText('ENCOUNTER / WEAVE · mismatch')).toBeVisible();await expect(view.getByText('Resonance proposes; it does not prove.')).toBeVisible();
+});
+
+test('map is left-to-right and keeps core territory readable by default',async({page})=>{
+  await page.goto('/?rewalk=1');const view=page.frameLocator('#view');
+  await expect(view.getByLabel('Territory legend')).toContainText('Accepted step');
+  const root=view.locator('.map-node.root');const frontier=view.locator('.map-node.arrival:not(.root)').last();
+  const rootLeft=Number.parseFloat(await root.evaluate(el=>(el as HTMLElement).style.left));
+  const frontierLeft=Number.parseFloat(await frontier.evaluate(el=>(el as HTMLElement).style.left));
+  expect(frontierLeft).toBeGreaterThan(rootLeft);
+  await expect(view.getByRole('button',{name:'Fit map'})).toBeVisible();
+  await expect(view.getByRole('button',{name:'Focus current'})).toBeVisible();
+});
+
+test('outline shares selection with the map and reads paths as a list',async({page})=>{
+  await page.goto('/?flightLines=1&noDraft=1');const view=page.frameLocator('#view');
+  await view.getByRole('button',{name:'Outline',exact:true}).click();
+  await expect(view.getByRole('region',{name:'Exploration outline'})).toBeVisible();
+  const item=view.getByRole('button',{name:/Accepted step: Another line distributes reconciliation across participants/});
+  await item.click();
+  await expect(view.getByRole('heading',{name:'Another line distributes reconciliation across participants.'})).toBeVisible();
+  await view.getByRole('button',{name:'Map',exact:true}).click();
+  await expect(view.getByRole('button',{name:/Visited arrival: Another line distributes reconciliation across participants/})).toHaveClass(/selected/);
 });
 
 test('map uses task language while keeping Shadow Walker terms secondary',async({page})=>{
