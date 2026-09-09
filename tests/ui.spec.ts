@@ -40,8 +40,9 @@ test('Save for later does not add a generated arrival',async({page,request})=>{
 test('map exposes semantic-shift hover/focus copy and an unvisited hollow direction',async({page})=>{
   await page.goto('/');const view=page.frameLocator('#view');
   const proposed=view.getByRole('button',{name:/Proposed arrival:/});await proposed.focus();
-  await expect(view.getByText('What entered',{exact:true}).first()).toBeVisible();
-  await expect(view.getByText('mismatch',{exact:true}).first()).toBeVisible();
+  const detail=view.locator('.detail-card');
+  await expect(detail.getByText('What entered',{exact:true})).toBeVisible();
+  await expect(detail.getByText('mismatch',{exact:true})).toBeVisible();
   await expect(view.getByText('Hollow nodes are sensed, not visited.',{exact:false})).toBeVisible();
 });
 
@@ -77,8 +78,10 @@ test('editing keeps domain-heavy controls behind advanced disclosure',async({pag
   await page.goto('/');const view=page.frameLocator('#view');
   await view.getByRole('button',{name:'Change it',exact:true}).click();
   await expect(view.getByLabel('Main idea')).toBeVisible();
-  await expect(view.getByText('Advanced structure & provenance',{exact:true})).toBeVisible();
-  await expect(view.getByLabel('New language / spans (comma separated)')).toBeHidden();
-  await view.getByText('Advanced structure & provenance',{exact:true}).click();
+  const advanced=view.locator('details.advanced-editor');
+  await expect(advanced).toBeVisible();
+  await expect(advanced).not.toHaveAttribute('open','');
+  await advanced.locator('summary').click();
+  await expect(advanced).toHaveAttribute('open','');
   await expect(view.getByLabel('New language / spans (comma separated)')).toBeVisible();
 });
