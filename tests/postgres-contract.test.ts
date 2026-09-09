@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PostgresStore } from '../packages/storage/src/postgres.ts';
+import { PostgresContext } from '../packages/storage/src/postgres-context.ts';
 import { POSTGRES_MIGRATIONS } from '../packages/storage/src/postgres-schema.ts';
 
 const publicMethods=[
@@ -29,4 +30,18 @@ test('Postgres schema preserves durable graph, review, receipt and cartography s
   assert.match(sql,/traversals_no_update/);
   assert.match(sql,/gesture_requests_no_update/);
   assert.doesNotMatch(sql,/\bpragma\b|\bstrict\s*;/);
+});
+
+test('Postgres idempotency lock keys never send NUL bytes as text parameters',async()=>{
+  const seen: unknown[][]=[];
+  const db={query:async(sql:string,values:unknown[]=[]):Promise<{rows:Record<string,unknown>[]}>=>{
+    seen.push(values);
+    if(sql.startsWith('SELECT hash,body FROM receipts'))return {rows:[]};
+    return {rows:[]};
+  }};
+  const ctx=new PostgresContext({} as never,()=>0);
+  const value=await ctx.receipt(db,'create','request-1',{hello:'world'},async()=>({ok:true}));
+  assert.deepEqual(value,{ok:true});
+  assert.equal(typeof seen[0]?.[0],'string');
+  assert.doesNotMatch(String(seen[0]?.[0]),/\0/);
 });

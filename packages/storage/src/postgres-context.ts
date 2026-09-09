@@ -39,7 +39,7 @@ export class PostgresContext {
   async load<T>(db:PostgresQueryable,table:'explorations'|'moves'|'drafts',id:string):Promise<T>{text(id,'id',128);const result=await db.query(`SELECT body FROM ${table} WHERE id=$1`,[id]);const row=result.rows[0] as JsonRow|undefined;requireThat(row,'NOT_FOUND',`${table} record not found.`);return decode<T>(row.body);}
   async receipt<T>(db:PostgresQueryable,scope:string,key:string,input:unknown,fn:()=>Promise<T>):Promise<T>{
     text(key,'requestId',128);const digest=canonicalHash(input);
-    await db.query('SELECT pg_advisory_xact_lock(hashtext($1))',[`${scope}\0${key}`]);
+    await db.query('SELECT pg_advisory_xact_lock(hashtext($1))',[canonicalHash({scope,key})]);
     const prior=await db.query('SELECT hash,body FROM receipts WHERE scope=$1 AND key=$2',[scope,key]);const row=prior.rows[0];
     if(row){requireThat(String(row.hash)===digest,'IDEMPOTENCY_CONFLICT','This requestId was already used with different input.');return decode<T>(row.body);}
     const value=await fn();await db.query('INSERT INTO receipts(scope,key,hash,body) VALUES($1,$2,$3,$4::jsonb)',[scope,key,digest,dbJson(value)]);return value;
