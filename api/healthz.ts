@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { hostedStore } from './_hosted.ts';
 
 type UnknownError={name?:unknown;code?:unknown};
 function errorSummary(error:unknown):{name:string;code?:string}{
@@ -11,15 +12,9 @@ function errorSummary(error:unknown):{name:string;code?:string}{
 export default async function handler(req:IncomingMessage,res:ServerResponse):Promise<void>{
   if(req.method!=='GET'){res.writeHead(405,{'Allow':'GET'});res.end();return;}
   const headers={'content-type':'application/json','cache-control':'no-store'};
-  let hosted:typeof import('./_hosted.ts');
-  try{hosted=await import('./_hosted.ts');}
-  catch(error){
-    console.error('Shadow Walker hosted module failed to load:',error);
-    res.writeHead(503,headers);res.end(JSON.stringify({status:'unavailable',stage:'module-load',runtime:process.version,error:errorSummary(error)}));return;
-  }
-  let store:Awaited<ReturnType<typeof hosted.hostedStore>>|undefined;
+  let store:Awaited<ReturnType<typeof hostedStore>>|undefined;
   try{
-    store=await hosted.hostedStore();
+    store=await hostedStore();
     await store.list();
     res.writeHead(200,headers);res.end(JSON.stringify({status:'ok',mode:'vercel-neon',runtime:process.version}));
   }catch(error){
