@@ -3,6 +3,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 
 type VercelLikeRequest=IncomingMessage & {body?:unknown;query?:Record<string,string|string[]|undefined>};
 type UnknownError={name?:unknown;code?:unknown;message?:unknown};
+const HOSTED_WIDGET_DOMAIN='https://shadow-walker.vercel.app';
 
 function querySecret(req:VercelLikeRequest):string|undefined{
   const fromQuery=req.query?.secret;if(typeof fromQuery==='string')return fromQuery;if(Array.isArray(fromQuery))return fromQuery[0];
@@ -56,7 +57,7 @@ export default async function handler(req:VercelLikeRequest,res:ServerResponse):
 
   let server:ReturnType<typeof createMcpServer>|undefined;
   try{
-    server=createMcpServer(store,hosted.widgetHtml());
+    server=createMcpServer(store,hosted.widgetHtml(),HOSTED_WIDGET_DOMAIN);
     const transport=new StreamableHTTPServerTransport({sessionIdGenerator:undefined,enableJsonResponse:true});
     await server.connect(transport);
     await transport.handleRequest(req,res,body);
