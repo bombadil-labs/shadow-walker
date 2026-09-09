@@ -52,7 +52,9 @@ test('map exposes semantic-shift hover/focus copy and an unvisited hollow direct
 test('Flight Lines structural ecology is available as optional map layers',async({page})=>{
   await page.goto('/?flightLines=1');const view=page.frameLocator('#view');
   await expect(view.getByRole('button',{name:/Structural pressure: External authority arrives asynchronously/})).toHaveCount(0);
-  for(const name of ['Evidence','Structure','Operations','Encounters'])await view.getByLabel(new RegExp(`^${name}`)).check();
+  const layerToggles=view.locator('.layer-bar input[type="checkbox"]');
+  await expect(layerToggles).toHaveCount(4);
+  for(let i=0;i<4;i++)await layerToggles.nth(i).check();
   const observation=view.getByRole('button',{name:/Grounded observation: A real deployment constraint surfaced/});
   const constraint=view.getByRole('button',{name:/Structural pressure: External authority arrives asynchronously/});
   const operation=view.getByRole('button',{name:/Operation: Selective boundary protocol/});
