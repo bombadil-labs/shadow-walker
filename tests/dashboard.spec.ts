@@ -26,7 +26,9 @@ test('exploration picker and direct page addresses reopen without creating a mov
   await expect(view.getByText('No proposed moves yet.')).toBeVisible();const url=page.url();expect(url).toContain('exploration=');await page.goto(url);await expect(view.getByText('No proposed moves yet.')).toBeVisible();
 });
 
-test('public landing page is static and honest about hosted availability',async({page})=>{
+test('public landing page is honest about the private hosted field test and public-release boundary',async({page})=>{
   await page.goto('http://127.0.0.1:4176/about');await expect(page.getByRole('heading',{name:/Follow what changes/})).toBeVisible();
-  await expect(page.getByText('Hosted accounts and a public MCP endpoint are not available yet.',{exact:false})).toBeVisible();await expect(page.getByRole('link',{name:'Official connection guide ↗'})).toBeVisible();
+  await expect(page.getByText('Private Vercel + Neon field test is live.',{exact:false})).toBeVisible();
+  await expect(page.getByText('Public signup, OAuth, and a public connector URL are not available yet.',{exact:false})).toBeVisible();
+  await expect(page.getByRole('link',{name:'Official connection guide ↗'})).toBeVisible();
 });
