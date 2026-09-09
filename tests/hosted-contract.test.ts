@@ -33,3 +33,13 @@ test('hosted entrypoint defers the raw source graph until invocation and keeps h
   assert.match(mcp,/await import\('\.\.\/apps\/server\/src\/mcp\.ts'\)/);
   assert.match(mcp,/await store\.close\(\)/);
 });
+
+test('shared MCP adapter keeps local resources host-neutral and hosted entrypoint supplies the widget domain',()=>{
+  const server=source('apps/server/src/mcp.ts'),mcp=source('api/mcp.ts');
+  assert.match(server,/import type \{ Store \}/,'SQLite Store should remain a type-only dependency of the shared MCP adapter');
+  assert.match(server,/widgetDomain\?: string/);
+  assert.doesNotMatch(server,/const widgetDomain='https:\/\/shadow-walker\.vercel\.app'/);
+  assert.match(server,/widgetDomain\?\{'openai\/widgetDomain':widgetDomain\}:\{\}/);
+  assert.match(mcp,/const HOSTED_WIDGET_DOMAIN='https:\/\/shadow-walker\.vercel\.app'/);
+  assert.match(mcp,/createMcpServer\(store,hosted\.widgetHtml\(\),HOSTED_WIDGET_DOMAIN\)/);
+});
