@@ -5,7 +5,6 @@ import { Pool } from '@neondatabase/serverless';
 import { PostgresStore } from '../packages/storage/src/postgres.ts';
 import type { PostgresPool } from '../packages/storage/src/postgres.ts';
 
-let storePromise: Promise<PostgresStore> | undefined;
 let widget: string | undefined;
 
 export function capabilityMatches(candidate: string | undefined): boolean {
@@ -22,11 +21,17 @@ export function widgetHtml(): string {
   return widget;
 }
 
-export function hostedStore(): Promise<PostgresStore> {
-  if(storePromise)return storePromise;
+/**
+ * Create one Neon pool/store for one serverless invocation.
+ *
+ * @neondatabase/serverless carries Pool/Client traffic over WebSockets and its
+ * serverless guidance requires those connections to be created, used and
+ * closed within the same request rather than cached across warm invocations.
+ */
+export async function hostedStore(): Promise<PostgresStore> {
   const connectionString=process.env.DATABASE_URL;
   if(!connectionString)throw new Error('DATABASE_URL is not configured.');
   const pool=new Pool({connectionString});
-  storePromise=PostgresStore.connect(pool as unknown as PostgresPool).catch(error=>{storePromise=undefined;throw error;});
-  return storePromise;
+  try{return await PostgresStore.connect(pool as unknown as PostgresPool);}
+  catch(error){await pool.end().catch(()=>{});throw error;}
 }

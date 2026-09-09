@@ -31,13 +31,17 @@ The capability appears in the MCP URL and may therefore be visible to infrastruc
 
 - `npm run build` produces the single-file MCP App at `dist/widget/index.html` before Vercel bundles the function.
 - `/mcp/:secret` rewrites to the stateless `/api/mcp` function. Incorrect or missing secrets return `404`.
-- `/healthz` initializes the Postgres store/migrations and performs a lightweight read; success returns `{status:"ok",mode:"vercel-neon"}`.
-- Every MCP request creates a fresh stateless MCP transport/server while the Neon pool/store may be reused by a warm function instance.
+- `/healthz` dynamically loads the hosted runtime so module-initialization failures become an explicit JSON health response rather than an opaque platform crash when possible.
+- Each Vercel invocation creates and closes its own Neon Pool/PostgresStore. The Neon serverless driver carries Pool/Client traffic over WebSockets and requires those connections to remain scoped to one serverless invocation.
+- `/healthz` initializes the Postgres store/migrations and performs a lightweight read; success returns `status: ok`. Failure reports only the stage, runtime version, environment-presence booleans, and an error name/code so secrets and connection strings are not exposed.
+- Every MCP request creates a fresh stateless MCP transport/server and closes both the MCP server and Neon store before the invocation ends.
 - Postgres migrations are serialized with an advisory lock, so concurrent cold starts do not race schema initialization.
 
 ## Verification boundary
 
 CI verifies the hosted function compiles, the capability-route contract, widget bundling configuration, and all existing local behavioral suites. A deployment is not considered hosted-runtime verified until `/healthz` succeeds against an attached Neon database and an MCP client completes a create -> prepare -> submit -> human review -> readback smoke test against the Vercel URL.
+
+If Vercel returns `FUNCTION_INVOCATION_FAILED` with no application logs, deploy the current `main` and retry `/healthz`. Hosted dependencies are loaded inside the handler so module-load failures can be reported from the function instead of escaping before the handler runs.
 
 ## After the field test
 
