@@ -58,11 +58,13 @@ test('Flight Lines structural ecology is visible as map features rather than raw
   await encounter.click();await expect(view.getByText('ENCOUNTER / WEAVE · mismatch')).toBeVisible();await expect(view.getByText('Resonance proposes; it does not prove.')).toBeVisible();
 });
 
-test('contextual branch action opens the branch form',async({page})=>{
+test('contextual branch action can save a branch request',async({page})=>{
   await page.goto('/?noDraft=1');const view=page.frameLocator('#view');
   const branch=view.getByRole('button',{name:'Branch from here'});await expect(branch).toBeVisible();await page.waitForTimeout(100);await branch.click();
-  await expect(view.getByLabel('Path name')).toBeVisible();
-  await expect(view.getByLabel('What should the next walk attend to?')).toBeVisible();
+  await view.getByLabel('Path name').fill('Follow the blind spot');
+  await view.getByLabel('What should the next walk attend to?').fill('Attend to what the current framing keeps excluding.');
+  await view.getByRole('button',{name:'Save path'}).click();
+  await expect(view.getByRole('status')).toContainText('Path saved');
 });
 
 test('review-first shell names the exploration and makes the pending decision primary',async({page})=>{
