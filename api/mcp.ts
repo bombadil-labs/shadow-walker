@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createMcpServer } from '../apps/server/src/mcp.ts';
+import { capabilityMatches, hostedStore, widgetHtml } from './_hosted.ts';
 
 type VercelLikeRequest=IncomingMessage & {body?:unknown;query?:Record<string,string|string[]|undefined>};
 
@@ -21,19 +22,16 @@ async function jsonBody(req:VercelLikeRequest):Promise<unknown>{
 }
 
 export default async function handler(req:VercelLikeRequest,res:ServerResponse):Promise<void>{
-  let hosted:typeof import('./_hosted.ts');
-  try{hosted=await import('./_hosted.ts');}
-  catch(error){console.error('Hosted Shadow Walker module failed to load:',error);res.writeHead(500);res.end('MCP runtime unavailable.');return;}
-  if(!hosted.capabilityMatches(querySecret(req))){res.writeHead(404);res.end();return;}
+  if(!capabilityMatches(querySecret(req))){res.writeHead(404);res.end();return;}
   if(req.method!=='POST'){res.writeHead(405,{'Allow':'POST'});res.end();return;}
   if(!req.headers['content-type']?.startsWith('application/json')){res.writeHead(415);res.end();return;}
   let body:unknown;
   try{body=await jsonBody(req);}catch(error){res.writeHead(error instanceof Error&&error.message==='REQUEST_TOO_LARGE'?413:400);res.end();return;}
-  let store:Awaited<ReturnType<typeof hosted.hostedStore>>|undefined;
+  let store:Awaited<ReturnType<typeof hostedStore>>|undefined;
   let server:ReturnType<typeof createMcpServer>|undefined;
   try{
-    store=await hosted.hostedStore();
-    server=createMcpServer(store,hosted.widgetHtml());
+    store=await hostedStore();
+    server=createMcpServer(store,widgetHtml());
     const transport=new StreamableHTTPServerTransport({sessionIdGenerator:undefined,enableJsonResponse:true});
     await server.connect(transport);
     await transport.handleRequest(req,res,body);
