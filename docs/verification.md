@@ -1,5 +1,13 @@
 # Verification record
 
+## Private hosted field test — September 9, 2026
+
+The Vercel/Neon field-test deployment reached an end-to-end live ChatGPT loop. `/healthz` returned `status: ok` with Vercel/Neon mode after a real database probe; a fresh ChatGPT connection then listed the hosted datastore, created a disposable exploration, read it back, and opened the Shadow Walker MCP App widget. This demonstrates the deployed transport, capability route, Vercel function graph, Neon/PostgreSQL persistence and widget resource working together in that field-test account.
+
+The hosted service is intentionally **single-user and capability-gated**, not authenticated multi-user infrastructure. There is no OAuth/account identity or two-account isolation yet, and the capability URL must be treated as a bearer secret. This live observation is not a public-service security certification and does not establish Claude compatibility.
+
+PRs #17–#19 then exercised the state-aware review shell, contextual branch/weave handoffs, left-to-right map layout, Map/Outline selection sharing and optional structural layers under the required Node 24 CI/browser matrix before merge.
+
 ## Standalone dashboard — September 7, 2026
 
 Implementation head `e3cb0b794ea0c1922877b023075105a952f9e16e` passed both [push CI](https://github.com/bombadil-labs/shadow-walker/actions/runs/34156659534) and [PR CI](https://github.com/bombadil-labs/shadow-walker/actions/runs/34156679111). The required Node 24 workflow installs locked dependencies, audits, typechecks/builds and runs **48 native tests, 14 integration tests and 7 browser tests**. No checks are optional or continue-on-error. Subsequent self-review/final-head results are recorded in PR #4.

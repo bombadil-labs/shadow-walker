@@ -2,27 +2,27 @@
 
 ## Shipping order
 
-The local standalone dashboard is the first slice. The chat and browser use one MCP implementation and one durable Store, so user-visible review behavior does not fork into a separate REST implementation. The public landing page is independently deployable; accounts and a publicly reachable MCP are deliberately not enabled by publishing that page.
+The local standalone dashboard remains the self-hosted slice. A **private single-user hosted field test** is now also deployed: stateless Vercel MCP handlers use Neon/PostgreSQL persistence and serve the same MCP App resource/tool definitions as local mode. Publishing the landing page still does not create an account or grant access to the private MCP; the field-test capability URL is configured out-of-band and must be treated as a bearer secret.
 
-The beta target is: create an account; connect ChatGPT or Claude through OAuth; explore in chat; inspect and review the same private exploration in the browser; return from a later session. No separate model API key, billing platform, autonomous workers, collaboration permissions, or directory approval is required for that first product loop.
+The public-beta target remains: create an account; connect ChatGPT or Claude through OAuth; explore in chat; inspect and review the same private exploration in the browser; return from a later session. No separate model API key, billing platform, autonomous workers, collaboration permissions, or directory approval is required for that first product loop.
 
 ## Hosting decision
 
-**Recommended shortest path:** Vercel for the static landing/instructions site, plus one persistent Node service on a durable volume for the app and MCP. Keep the tested SQLite transaction core for the first beta. Serve the authenticated app and its browser API from the same origin on that service. A managed identity provider supplies web login and MCP-compatible OAuth; provider selection and provisioning remain open.
+The field test selected the all-on-Vercel route: Vercel hosts the static site plus stateless MCP/health functions; Neon/PostgreSQL provides durable shared state through the asynchronous `PostgresStore` adapter. The deployed ChatGPT smoke test demonstrated list/create/read/open-widget against that stack.
 
-**All-on-Vercel alternative:** deploy stateless app/MCP handlers backed by a managed database (for example PostgreSQL), not a local SQLite file. That requires an asynchronous storage adapter and concurrency/migration tests that preserve atomic review, capabilities, ownership and idempotency. Do not describe this as a config-only deployment of the current Store.
+Local mode continues to use the tested SQLite `Store`; hosted mode does **not** put SQLite in `/tmp` or depend on function filesystem persistence. The next hosting problem is therefore identity/operations rather than basic database durability: principal scoping, OAuth, backup/restore, privacy controls and multi-user concurrency/isolation evidence.
 
-Why: Vercel supports MCP handlers, but its function instances do not share a durable local filesystem. Fluid Compute does not make a local SQLite file persistent shared state. The current server's `listen()` entrypoint also is not a Vercel function handler. Do not move the SQLite file into `/tmp` or enable anonymous public ingress as a workaround.
+The current capability route is an intentionally temporary field-test access boundary. It is adequate for one trusted operator but must not become the public authentication mechanism.
 
 Primary references, checked September 7, 2026:
 - https://vercel.com/kb/guide/is-sqlite-supported-in-vercel
 - https://vercel.com/docs/mcp/deploy-mcp-servers-to-vercel
 
-## Deploy only the landing page on Vercel
+## Vercel field-test deployment
 
-The root `vercel.json` intentionally selects `apps/site` as static output with no install or build command and no API proxy/rewrite. Import this repository into a Vercel project, use the repository root and Framework Preset **Other**, and preserve the checked-in configuration. Review the preview before promoting it. The same page is served locally at `/about`.
+The root `vercel.json` builds the site and packages private MCP/health functions. `/healthz` probes Neon independently of the application graph; `/mcp/:secret` rewrites into the stateless MCP function and requires an exact configured capability. The connector secret and `DATABASE_URL` are Vercel environment configuration and must never be committed.
 
-This deploy contains explanatory copy and links, not SQLite, accounts, an MCP endpoint, an authentication flow or user data. There is no hosted signup button or fake production connector URL. `http://localhost:3001/` is explicitly the self-hosted dashboard on the visitor's own machine. A Vercel project, account, domain, or deployment has not been provisioned by this change.
+The public site contains explanatory copy and links, not user data or a signup flow. The hosted MCP exists for the current private field test, but there is no public connector URL: access requires the operator's secret capability URL. `http://localhost:3001/` remains the self-hosted dashboard on the visitor's own machine.
 
 Reference: https://vercel.com/docs/project-configuration/vercel-json
 
@@ -56,7 +56,7 @@ References:
 | Host compatibility | Test a real ChatGPT and a real Claude account. Connecting tools alone is not proof that either host renders the UI identically. The browser review surface is the fallback, not automatic acceptance by the model. |
 | Onboarding | Test the published instructions on a clean account; distinguish remote web connectors from local Desktop/CLI mechanisms and workspace restrictions. |
 
-The basic private ChatGPT path has now been exercised in the user's setup: draft submission, reported human Land, tool readback, reported server restart, and readback/reopen of the same IDs and content. That observation is narrower than a full security certification. Claude, fresh-account OAuth and public multi-user behavior remain untested.
+The basic private ChatGPT path has now been exercised both locally and through the Vercel/Neon field-test endpoint. The hosted smoke test included list, create, read and open-widget against persisted Neon state. Those observations are narrower than a full security certification. Claude, fresh-account OAuth and public multi-user behavior remain untested.
 
 Manual custom-connector setup is enough for an initial beta. Directory/marketplace submission, legal review of public policy text and any formal listing requirements are separate work; do not claim an official partnership or approval.
 
