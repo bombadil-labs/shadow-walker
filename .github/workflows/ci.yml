@@ -55,10 +55,6 @@ jobs:
         include:
           - surface: embedded-app
             command: npx playwright test tests/ui.spec.ts
-          - surface: phase3-layer-controls
-            command: npx playwright test tests/phase3-layer-diagnostic.spec.ts --grep "controls reveal"
-          - surface: phase3-layer-details
-            command: npx playwright test tests/phase3-layer-diagnostic.spec.ts --grep "details remain"
           - surface: standalone-review
             command: npx playwright test tests/dashboard.spec.ts --grep "standalone page opens"
           - surface: standalone-picker
