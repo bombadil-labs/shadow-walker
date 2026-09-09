@@ -15,6 +15,7 @@ test('standalone page opens saved state, protects structured edits, revises, kee
   await expect(view.getByRole('status')).toContainText('Kept.');
   await page.reload();
   await expect(view.getByText('Standalone review keeps the same durable hypothesis.',{exact:true}).first()).toBeVisible();
+  await view.getByRole('button',{name:'Map',exact:true}).click();
   await expect(view.getByRole('button',{name:/Visited arrival: Standalone review keeps/})).toBeVisible();
   await expect(view.getByRole('button',{name:'Keep this',exact:true})).toHaveCount(0);
 });
