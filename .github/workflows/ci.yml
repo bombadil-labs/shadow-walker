@@ -55,12 +55,10 @@ jobs:
         include:
           - surface: embedded-app
             command: npx playwright test tests/ui.spec.ts
-          - surface: phase3-layers
-            command: npx playwright test tests/ui.spec.ts --grep "Flight Lines structural ecology is available"
-          - surface: phase3-geometry
-            command: npx playwright test tests/ui.spec.ts --grep "map is left-to-right"
-          - surface: phase3-outline
-            command: npx playwright test tests/ui.spec.ts --grep "outline shares selection"
+          - surface: phase3-layer-controls
+            command: npx playwright test tests/phase3-layer-diagnostic.spec.ts --grep "controls reveal"
+          - surface: phase3-layer-details
+            command: npx playwright test tests/phase3-layer-diagnostic.spec.ts --grep "details remain"
           - surface: standalone-review
             command: npx playwright test tests/dashboard.spec.ts --grep "standalone page opens"
           - surface: standalone-picker
