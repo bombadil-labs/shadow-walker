@@ -61,3 +61,24 @@ test('Flight Lines structural ecology is visible as map features rather than raw
 test('human can preserve a branch intention without visiting new territory',async({page,request})=>{await page.goto('/?noDraft=1');const view=page.frameLocator('#view');await view.getByRole('button',{name:'Open a branch from this arrival'}).click();await view.getByLabel('Line name').fill('Follow the blind spot');await view.getByLabel('Direction for the next walk').fill('Attend to what the current framing keeps excluding.');await view.getByRole('button',{name:'Save branch intention'}).click();await expect(view.getByRole('status')).toContainText('Branch intention saved');const id=await page.locator('body').getAttribute('data-exploration-id');const snapshot=await (await request.get(`/snapshot?id=${id}`)).json();expect(snapshot.positions).toHaveLength(1);expect(snapshot.activeMove).toBeNull();expect(snapshot.cartography.lines).toHaveLength(2);expect(snapshot.cartography.gestureRequests.at(-1).kind).toBe('branch');});
 test('human can request a weave across developed lines without creating an encounter',async({page,request})=>{await page.goto('/?flightLines=1&noDraft=1');const view=page.frameLocator('#view');await view.getByRole('button',{name:'Bring lines into encounter'}).click();const choices=view.locator('.line-choice input:not(:disabled)');expect(await choices.count()).toBeGreaterThanOrEqual(2);for(let i=0;i<await choices.count();i++)await choices.nth(i).check();await view.getByLabel('What should the encounter test?').fill('Do these lines preserve the same invariant, or merely use similar language?');const id=await page.locator('body').getAttribute('data-exploration-id');const before=await (await request.get(`/snapshot?id=${id}`)).json();await view.getByRole('button',{name:'Save weave intention'}).click();await expect(view.getByRole('status')).toContainText('Weave intention saved');const after=await (await request.get(`/snapshot?id=${id}`)).json();expect(after.cartography.encounters).toHaveLength(before.cartography.encounters.length);expect(after.cartography.gestureRequests.at(-1).kind).toBe('weave');expect(after.cartography.weaveProposals).toHaveLength(0);});
 test('human review is required before a conversational weave becomes an encounter',async({page,request})=>{await page.goto('/?flightLines=1&weaveReview=1');const view=page.frameLocator('#view');await expect(view.getByText('PROPOSED WEAVE · REVISION 1')).toBeVisible();await expect(view.getByRole('button',{name:'Keep weave'})).toBeEnabled();const id=await page.locator('body').getAttribute('data-exploration-id');const before=await (await request.get(`/snapshot?id=${id}`)).json();await view.getByRole('button',{name:'Keep weave'}).click();await expect(view.getByRole('status')).toContainText('Weave kept as a candidate encounter');const after=await (await request.get(`/snapshot?id=${id}`)).json();expect(after.cartography.encounters).toHaveLength(before.cartography.encounters.length+1);expect(after.cartography.weaveProposals.at(-1).status).toBe('kept');expect(after.activeMove).toBeNull();});
+
+test('review-first shell names the exploration and makes the pending decision primary',async({page})=>{
+  await page.goto('/');const view=page.frameLocator('#view');
+  await expect(view.getByRole('heading',{name:'A discovery walk',exact:true})).toBeVisible();
+  await expect(view.getByText('REVIEW NEEDED',{exact:true}).first()).toBeVisible();
+  await expect(view.getByRole('heading',{name:'A proposed step is waiting for you.',exact:true})).toBeVisible();
+  await expect(view.locator('.review-first-card + .map-layout')).toHaveCount(1);
+  await expect(view.getByText('What changed',{exact:true}).first()).toBeVisible();
+  await expect(view.getByText('What this opens',{exact:true}).first()).toBeVisible();
+  await expect(view.getByText('What we’re unsure about',{exact:true}).first()).toBeVisible();
+});
+
+test('editing keeps domain-heavy controls behind advanced disclosure',async({page})=>{
+  await page.goto('/');const view=page.frameLocator('#view');
+  await view.getByRole('button',{name:'Change it',exact:true}).click();
+  await expect(view.getByLabel('Main idea')).toBeVisible();
+  await expect(view.getByText('Advanced structure & provenance',{exact:true})).toBeVisible();
+  await expect(view.getByLabel('New language / spans (comma separated)')).toBeHidden();
+  await view.getByText('Advanced structure & provenance',{exact:true}).click();
+  await expect(view.getByLabel('New language / spans (comma separated)')).toBeVisible();
+});
