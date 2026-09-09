@@ -13,6 +13,7 @@ test('held branches and pending weaves are visible directly on the map',async({p
   const choices=woven.locator('.line-choice input:not(:disabled)');for(let i=0;i<await choices.count();i++)await choices.nth(i).check();
   await woven.getByLabel('What do you want to compare?').fill('Do the developed lines preserve the same authority invariant?');
   await woven.getByRole('button',{name:'Save comparison'}).click();
+  const layerToggles=woven.locator('.layer-bar input[type="checkbox"]');await expect(layerToggles).toHaveCount(4);await layerToggles.nth(3).check();
   await expect(woven.getByRole('button',{name:/Weave waiting: Do the developed lines preserve/})).toBeVisible();
 });
 
