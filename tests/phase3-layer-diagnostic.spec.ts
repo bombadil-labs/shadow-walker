@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 const enableAll=async(view:any)=>{
-  for(const name of ['Evidence','Structure','Operations','Encounters'])await view.getByLabel(new RegExp(`^${name}`)).check();
+  const toggles=view.locator('.layer-bar input[type="checkbox"]');
+  await expect(toggles).toHaveCount(4);
+  for(let i=0;i<4;i++)await toggles.nth(i).check();
 };
 
 test('phase3 layer controls reveal structural features',async({page})=>{
