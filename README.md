@@ -4,7 +4,7 @@ A persistent, human-reviewed toolkit for **situated latent-space cartography**. 
 
 Shadow Walker synthesizes the core dynamics of Semantic Walk and Flight Lines: ordered semantic movement, explicit path dependence, preserved alternatives, parallel lines, structural constraints, executable cross-domain operations, breakdown as information, and human review without automatic continuation. The map records transformations rather than merely conclusions.
 
-Think in your AI chat; keep the evolving territory in Shadow Walker. The MCP tools, embedded app and standalone browser dashboard share one SQLite-backed record. There is no separate model API key, hidden background agent, or transcript capture. The server preserves only what is explicitly recorded through Shadow Walker.
+Think in your AI chat; keep the evolving territory in Shadow Walker. The MCP tools and embedded app share one cartographic record: local mode uses SQLite, while the private hosted field test uses Neon/PostgreSQL behind stateless Vercel MCP handlers. There is no separate model API key, hidden background agent, or transcript capture. The server preserves only what is explicitly recorded through Shadow Walker.
 
 > **The present is insufficient, but the path is not lost.**
 
@@ -50,9 +50,11 @@ The long-term ontology includes first-class Waypoints, Structural Constraints, O
 
 ## Verification and current status
 
-The last merged standalone implementation passed both Node 24 CI checks with full typecheck/build, 48 native tests, 14 integration tests and 7 browser tests, plus the required dependency audit. The cartography refactor adds line/transition migration, semantic-shift validation, explicit forking and map/review coverage; final PR verification is recorded on the corresponding pull request before merge.
+The private hosted field test is live on Vercel with Neon/PostgreSQL persistence. A real ChatGPT connection has successfully listed the fresh hosted datastore, created an exploration, read it back, and opened the MCP App widget from the hosted endpoint. The hosted transport remains intentionally single-user and capability-gated; there is **no OAuth, account identity, or cross-user isolation yet**.
 
-A basic private ChatGPT loop has been exercised: draft submission, human Land, readback, server restart and reopen of the same persisted exploration. This is not full host/security certification. Real Claude behavior, hosted OAuth and two-account isolation remain outstanding.
+Recent UX work also made the review shell state-aware, moved branch/weave actions into context, and added left-to-right Map/Outline navigation with optional Evidence / Structure / Operations / Encounters layers. Final CI evidence is recorded on the corresponding pull requests and in [docs/verification.md](docs/verification.md).
+
+This is still a field test, not public-service security certification. Real Claude behavior, OAuth, two-account isolation, backup/restore, privacy controls and clean-account onboarding remain outstanding.
 
 ```sh
 npx playwright install chromium
@@ -61,20 +63,22 @@ npm run test:browser
 
 Dependencies remain locked; use `npm ci` and rerun the audit and full suite for upgrades.
 
-## Public beta and Vercel
+## Private hosted field test and public beta
 
-`vercel.json` deploys **only the static landing page in `apps/site`**. This does not expose the MCP, deploy the database, create accounts or provision an identity provider.
+`vercel.json` now builds the static landing page **and** private hosted MCP/health functions. Hosted state lives in Neon/PostgreSQL; the Vercel function does not depend on ephemeral local SQLite storage.
 
-The proposed shortest beta path is Vercel for the site plus a single durable Node/SQLite backend and managed identity. An all-on-Vercel backend requires a managed database/storage-adapter change. User ownership, web login, MCP OAuth, backup/restore, privacy controls and real host onboarding are release gates. See [public-release plan](docs/public-release.md) and [issue #5](https://github.com/bombadil-labs/shadow-walker/issues/5).
+The current hosted MCP uses a high-entropy capability embedded in its private connector URL. Treat that URL as a bearer secret: do not publish it, commit it, paste it into issues, or reuse it as public authentication. This is sufficient for the present single-user field test, but it is not a substitute for accounts or OAuth.
+
+The next release milestone is still an authenticated public beta: user ownership on every record, web login, MCP OAuth, two-account isolation tests, backup/restore, privacy controls and clean-account ChatGPT/Claude onboarding. See [public-release plan](docs/public-release.md) and [issue #5](https://github.com/bombadil-labs/shadow-walker/issues/5).
 
 ## Repository map
 
 - `packages/domain`: cartographic domain model, move validation, bounded context.
-- `packages/storage`: transactional SQLite persistence, migrations, lines/transitions, review capabilities and event history.
+- `packages/storage`: transactional SQLite local persistence plus the async PostgreSQL/Neon hosted adapter, migrations, lines/transitions, review capabilities and event history.
 - `packages/protocol`: MCP schemas and UI contract.
 - `apps/server`: MCP adapters, loopback HTTP and guarded local browser host API.
 - `apps/widget`: shared map-first MCP Apps inspector/review UI; `apps/dashboard`: standalone AppBridge host.
-- `apps/site`: static landing and self-hosted ChatGPT/Claude instructions; no user data or live signup.
+- `apps/site`: static landing and field-test/self-hosted ChatGPT/Claude instructions; no user data or public signup.
 - `skills/shadow-walker`, `docs`, `tests`: host guidance, cartographic synthesis, architecture/roadmap and verification.
 
 The pre-existing `test.md` remains untouched. Shadow Walker is distinct from Loam and groovy-commutator.
