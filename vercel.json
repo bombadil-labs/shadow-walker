@@ -30,7 +30,7 @@
   "functions": {
     "api/mcp.ts": {
       "maxDuration": 60,
-      "includeFiles": "dist/widget/**"
+      "includeFiles": "{api/_hosted.ts,apps/server/src/mcp.ts,packages/**,dist/widget/**}"
     },
     "api/healthz.ts": {
       "maxDuration": 30

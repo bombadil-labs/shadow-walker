@@ -1,9 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Pool } from '@neondatabase/serverless';
-import { PostgresStore } from '../packages/storage/src/postgres.ts';
-import type { PostgresPool } from '../packages/storage/src/postgres.ts';
+import type { PostgresPool, PostgresStore } from '../packages/storage/src/postgres.ts';
 
 let widget: string | undefined;
 
@@ -24,13 +22,17 @@ export function widgetHtml(): string {
 /**
  * Create one Neon pool/store for one serverless invocation.
  *
- * @neondatabase/serverless carries Pool/Client traffic over WebSockets and its
- * serverless guidance requires those connections to be created, used and
- * closed within the same request rather than cached across warm invocations.
+ * Keep the Postgres implementation behind an invocation-time import so the
+ * Vercel entrypoint can start, authenticate, and report module-load failures
+ * even when the hosted source graph was packaged incorrectly.
  */
 export async function hostedStore(): Promise<PostgresStore> {
   const connectionString=process.env.DATABASE_URL;
   if(!connectionString)throw new Error('DATABASE_URL is not configured.');
+  const [{Pool},{PostgresStore}]=await Promise.all([
+    import('@neondatabase/serverless'),
+    import('../packages/storage/src/postgres.ts'),
+  ]);
   const pool=new Pool({connectionString});
   try{return await PostgresStore.connect(pool as unknown as PostgresPool);}
   catch(error){await pool.end().catch(()=>{});throw error;}

@@ -1,13 +1,26 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { createMcpServer } from '../apps/server/src/mcp.ts';
-import { capabilityMatches, hostedStore, widgetHtml } from './_hosted.ts';
 
 type VercelLikeRequest=IncomingMessage & {body?:unknown;query?:Record<string,string|string[]|undefined>};
+type UnknownError={name?:unknown;code?:unknown;message?:unknown};
 
 function querySecret(req:VercelLikeRequest):string|undefined{
   const fromQuery=req.query?.secret;if(typeof fromQuery==='string')return fromQuery;if(Array.isArray(fromQuery))return fromQuery[0];
   try{const url=new URL(req.url??'','https://shadow-walker.invalid');return url.searchParams.get('secret')??undefined;}catch{return undefined;}
+}
+
+function errorSummary(error:unknown):{name:string;code?:string;message?:string}{
+  const value=(error&&typeof error==='object'?error:{}) as UnknownError;
+  const name=typeof value.name==='string'?value.name:error instanceof Error?error.name:'UnknownError';
+  const code=typeof value.code==='string'||typeof value.code==='number'?String(value.code):undefined;
+  const rawMessage=typeof value.message==='string'?value.message:error instanceof Error?error.message:undefined;
+  const message=rawMessage?.replace(/postgres(?:ql)?:\/\/[^@\s]+@/gi,'postgres://***@');
+  return {name,...(code?{code}:{}),...(message?{message}:{})};
+}
+
+function unavailable(res:ServerResponse,stage:string,error:unknown):void{
+  res.writeHead(500,{'content-type':'application/json','cache-control':'no-store'});
+  res.end(JSON.stringify({status:'unavailable',stage,runtime:process.version,error:errorSummary(error)}));
 }
 
 async function jsonBody(req:VercelLikeRequest):Promise<unknown>{
@@ -22,25 +35,37 @@ async function jsonBody(req:VercelLikeRequest):Promise<unknown>{
 }
 
 export default async function handler(req:VercelLikeRequest,res:ServerResponse):Promise<void>{
-  if(!capabilityMatches(querySecret(req))){res.writeHead(404);res.end();return;}
+  let hosted:typeof import('./_hosted.ts');
+  try{hosted=await import('./_hosted.ts');}
+  catch(error){console.error('Hosted Shadow Walker bootstrap module failed to load:',error);unavailable(res,'hosted-module',error);return;}
+
+  if(!hosted.capabilityMatches(querySecret(req))){res.writeHead(404);res.end();return;}
   if(req.method!=='POST'){res.writeHead(405,{'Allow':'POST'});res.end();return;}
   if(!req.headers['content-type']?.startsWith('application/json')){res.writeHead(415);res.end();return;}
+
   let body:unknown;
   try{body=await jsonBody(req);}catch(error){res.writeHead(error instanceof Error&&error.message==='REQUEST_TOO_LARGE'?413:400);res.end();return;}
-  let store:Awaited<ReturnType<typeof hostedStore>>|undefined;
+
+  let createMcpServer:typeof import('../apps/server/src/mcp.ts')['createMcpServer'];
+  try{({createMcpServer}=await import('../apps/server/src/mcp.ts'));}
+  catch(error){console.error('Hosted Shadow Walker MCP module failed to load:',error);unavailable(res,'mcp-module',error);return;}
+
+  let store:Awaited<ReturnType<typeof hosted.hostedStore>>|undefined;
+  try{store=await hosted.hostedStore();}
+  catch(error){console.error('Hosted Shadow Walker store failed to initialize:',error);unavailable(res,'database',error);return;}
+
   let server:ReturnType<typeof createMcpServer>|undefined;
   try{
-    store=await hostedStore();
-    server=createMcpServer(store,widgetHtml());
+    server=createMcpServer(store,hosted.widgetHtml());
     const transport=new StreamableHTTPServerTransport({sessionIdGenerator:undefined,enableJsonResponse:true});
     await server.connect(transport);
     await transport.handleRequest(req,res,body);
   }catch(error){
     console.error('Hosted Shadow Walker MCP request failed:',error);
-    if(!res.headersSent)res.writeHead(500);
-    if(!res.writableEnded)res.end('MCP request failed.');
+    if(!res.headersSent)unavailable(res,'mcp-request',error);
+    else if(!res.writableEnded)res.end();
   }finally{
     if(server)await server.close().catch(error=>console.error('Hosted Shadow Walker MCP server close failed:',error));
-    if(store)await store.close().catch(error=>console.error('Hosted Shadow Walker store close failed:',error));
+    await store.close().catch(error=>console.error('Hosted Shadow Walker store close failed:',error));
   }
 }
