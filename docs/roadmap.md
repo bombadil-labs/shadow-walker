@@ -14,9 +14,13 @@ The standalone dashboard, shared review widget, static landing/instructions page
 
 The user exercised the basic private ChatGPT draft/Land/readback/reported-restart/reopen loop. Full host behavior and Claude still require live testing; this is not a public-service security certification.
 
+### Private hosted field test
+
+A single-user hosted field test is now deployed on Vercel with Neon/PostgreSQL persistence and a capability-gated Streamable HTTP MCP endpoint. A real ChatGPT connection has completed list → create → read → open-widget against that hosted stack. The capability URL is a private bearer secret; this milestone deliberately does **not** add OAuth, account identity, public signup or cross-user isolation.
+
 ### Next release milestone — authenticated public beta
 
-The [public-release plan](public-release.md) and [issue #5](https://github.com/bombadil-labs/shadow-walker/issues/5) track durable backend hosting, managed identity, principal-scoped storage/capabilities/receipts, MCP OAuth, two-account isolation tests, backups/privacy controls and tested onboarding. Vercel can host the static landing immediately; it cannot make a local SQLite file persistent shared function storage. No hosted account service, public MCP or deployment is delivered by the static site.
+The [public-release plan](public-release.md) and [issue #5](https://github.com/bombadil-labs/shadow-walker/issues/5) now focus on the remaining public-product boundary: managed identity, principal-scoped storage/capabilities/receipts, MCP OAuth, two-account isolation tests, backups/privacy controls and tested ChatGPT/Claude onboarding. The hosted Postgres adapter and Vercel MCP path are field-tested infrastructure, not proof that the service is ready for untrusted multi-user ingress.
 
 Package the detailed host skill when automatic discovery is needed; a connected MCP alone does not install the repository's SKILL.md.
 
