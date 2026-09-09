@@ -58,7 +58,12 @@ test('Flight Lines structural ecology is visible as map features rather than raw
   await encounter.click();await expect(view.getByText('ENCOUNTER / WEAVE · mismatch')).toBeVisible();await expect(view.getByText('Resonance proposes; it does not prove.')).toBeVisible();
 });
 
-test('human can preserve a branch intention without visiting new territory',async({page,request})=>{await page.goto('/?noDraft=1');const view=page.frameLocator('#view');const branch=view.getByRole('button',{name:'Branch from here'});await expect(branch).toBeVisible();await page.waitForTimeout(100);await branch.click();await view.getByLabel('Path name').fill('Follow the blind spot');await view.getByLabel('What should the next walk attend to?').fill('Attend to what the current framing keeps excluding.');await view.getByRole('button',{name:'Save path'}).click();await expect(view.getByRole('status')).toContainText('Path saved');const id=await page.locator('body').getAttribute('data-exploration-id');const snapshot=await (await request.get(`/snapshot?id=${id}`)).json();expect(snapshot.positions).toHaveLength(1);expect(snapshot.activeMove).toBeNull();expect(snapshot.cartography.lines).toHaveLength(2);expect(snapshot.cartography.gestureRequests.at(-1).kind).toBe('branch');await expect(view.getByRole('heading',{name:'Ready when you return to chat'})).toBeVisible();await expect(view.getByText('Resume the saved path “Follow the blind spot”.')).toBeVisible();});
+test('contextual branch action opens the branch form',async({page})=>{
+  await page.goto('/?noDraft=1');const view=page.frameLocator('#view');
+  const branch=view.getByRole('button',{name:'Branch from here'});await expect(branch).toBeVisible();await page.waitForTimeout(100);await branch.click();
+  await expect(view.getByLabel('Path name')).toBeVisible();
+  await expect(view.getByLabel('What should the next walk attend to?')).toBeVisible();
+});
 
 test('review-first shell names the exploration and makes the pending decision primary',async({page})=>{
   await page.goto('/');const view=page.frameLocator('#view');
